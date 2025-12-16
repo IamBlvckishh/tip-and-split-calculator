@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. ELEMENT SELECTION ---
+    // --- 1. ELEMENT SELECTION (No Change) ---
     const currencySelect = document.getElementById('currency-select');
     const modeSelect = document.getElementById('mode-select');
     const darkModeBtn = document.getElementById('dark-mode-btn');
@@ -26,34 +26,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareInvoiceBtn = document.getElementById('share-invoice-btn');       
 
 
-    // --- 2. INPUT FORMATTING FUNCTION (Handles commas and resets share button) ---
+    // --- 2. INPUT FORMATTING FUNCTION (No Change) ---
     const formatNumberInput = (e) => {
         let value = e.target.value;
 
-        // 1. Remove all non-digit characters except the decimal point
         let cleanValue = value.replace(/[^\d.]/g, ''); 
         
-        // 2. Separate whole number and decimal parts
         let parts = cleanValue.split('.');
         let whole = parts[0];
-        // Limit decimals to two
         let decimal = parts.length > 1 ? '.' + parts[1].substring(0, 2) : ''; 
 
-        // 3. Add commas for thousands to the whole number part
         let formattedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-        // 4. Update the input field
         e.target.value = formattedWhole + decimal;
         
-        // 5. Trigger calculation (results are now visible in real-time)
         calculate(); 
         
-        // 6. When input changes, hide the 'Share' button to force re-generation first
         shareInvoiceBtn.classList.add('hidden');
         generateBtn.classList.remove('hidden');
     };
 
-    // --- 3. CURRENCY AND FORMATTING HELPERS ---
+    // --- 3. CURRENCY AND FORMATTING HELPERS (No Change) ---
     const getLocaleForCurrency = (currencyCode) => {
         switch (currencyCode) {
             case 'EUR': return 'de-DE';
@@ -75,12 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const getCleanMonetaryValue = (inputElement) => {
-        // Remove commas before parsing float
         return parseFloat(inputElement.value.replace(/,/g, '')) || 0;
     };
 
 
-    // --- 4. CORE CALCULATION FUNCTION (Updates the visible display) ---
+    // --- 4. CORE CALCULATION FUNCTION (No Change) ---
     const calculate = () => {
         let baseTotal = 0;
         let totalTipAmount = 0;
@@ -115,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let totalBill = baseTotal + totalTipAmount;
         let perPersonCost = totalBill / people;
         
-        // APPLY ROUNDING LOGIC
         let roundedTotalBill = totalBill; 
         let extraTipAdded = 0;
 
@@ -127,27 +118,21 @@ document.addEventListener('DOMContentLoaded', () => {
             totalTipAmount += extraTipAdded;
         }
 
-        // Update the VISIBLE display fields
         totalTipDisplay.textContent = formatCurrency(totalTipAmount);
         totalWithTipDisplay.textContent = formatCurrency(roundedTotalBill);
         perPersonDisplay.textContent = formatCurrency(perPersonCost);
     };
 
 
-    // --- 5. GENERATE & VIEW INVOICE FUNCTION (Simplifes the view and prepares share) ---
+    // --- 5. GENERATE & VIEW INVOICE FUNCTION (No Change) ---
     const generateAndViewInvoice = () => {
-        // 1. Perform final calculation (ensure numbers are finalized)
         calculate();
-
-        // 2. Hide the 'Generate' button
         generateBtn.classList.add('hidden');
-
-        // 3. Show the 'Share' button
         shareInvoiceBtn.classList.remove('hidden');
     }
 
 
-    // --- 6. SHARE INVOICE FUNCTION (Performs the share action) ---
+    // --- 6. SHARE INVOICE FUNCTION (FIXED: Handling user cancellation silently) ---
     const shareInvoice = () => {
         calculate(); 
         
@@ -226,8 +211,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: `Invoice: ${mainDescription}`,
                 text: invoiceText,
             }).catch(error => {
-                console.error("Share failed:", error);
-                alert('Share failed or was cancelled. Copy this text instead:\n\n' + invoiceText);
+                // Check if the error is due to user cancellation (AbortError)
+                if (error.name === 'AbortError' || error.message === 'Share cancelled') {
+                    // Do nothing, silence the cancellation.
+                    console.log("Sharing was cancelled by the user.");
+                } else {
+                    // If it's a real error (e.g., share not supported, failed), show the prompt.
+                    console.error("Share failed:", error);
+                    prompt('Copy the invoice text below:', invoiceText);
+                }
             });
         } else {
             prompt('Copy the invoice text below:', invoiceText);
@@ -235,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- 7. HELPER FUNCTIONS ---
+    // --- 7. HELPER FUNCTIONS (No Change) ---
     
     const updateNamesList = () => {
         const peopleCount = parseInt(numPeopleInput.value) || 1;
@@ -269,7 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
             singleModeDiv.classList.remove('hidden');
         }
         calculate();
-        // Reset buttons when mode switches
         shareInvoiceBtn.classList.add('hidden');
         generateBtn.classList.remove('hidden');
     };
@@ -312,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- 8. EVENT LISTENERS ---
+    // --- 8. EVENT LISTENERS (FIXED: Bill Description Input) ---
     currencySelect.addEventListener('change', calculate);
     modeSelect.addEventListener('change', switchMode);
     addBillItemBtn.addEventListener('click', createBillItem);
@@ -323,15 +314,21 @@ document.addEventListener('DOMContentLoaded', () => {
     generateBtn.addEventListener('click', generateAndViewInvoice);
     shareInvoiceBtn.addEventListener('click', shareInvoice);
 
-    // Input Change Listeners (trigger formatNumberInput which handles commas, calculate(), and view reset)
-    billDescriptionInput.addEventListener('input', formatNumberInput); 
+    // Input Change Listeners 
+    // FIXED: billDescriptionInput now uses a simple listener to reset the share button
+    billDescriptionInput.addEventListener('input', () => {
+        calculate();
+        shareInvoiceBtn.classList.add('hidden');
+        generateBtn.classList.remove('hidden');
+    }); 
+    
+    // Monetary inputs use formatNumberInput
     billTotalInput.addEventListener('input', formatNumberInput); 
     tipPercentInput.addEventListener('input', formatNumberInput); 
 
     // Listeners that trigger names list updates or calculation
     numPeopleInput.addEventListener('input', () => {
         updateNamesList();
-        // Use formatNumberInput logic to handle input reset and calculation
         formatNumberInput({target: numPeopleInput}); 
     });
 
