@@ -1,36 +1,114 @@
-<div class="calculator-container">
-    <h1>Tip & Split Calculator</h1>
-    
-    <div id="names-container">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Tip & Split Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="calculator-container">
+        <h1>Tip & Split Calculator</h1>
+        
+        <div class="top-controls">
+            <div class="control-group">
+                <label for="mode-select">Mode</label>
+                <select id="mode-select">
+                    <option value="single">Single Bill Mode</option>
+                    <option value="multiple">Multiple Bills Mode</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="currency-select">Currency</label>
+                <select id="currency-select">
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                    <option value="JPY">JPY (¥)</option>
+                    <option value="NGN">NGN (₦)</option>
+                    <option value="CAD">CAD (C$)</option>
+                </select>
+            </div>
+            
+            <div class="control-group dark-mode-toggle">
+                <button id="dark-mode-btn" aria-label="Toggle Dark Mode">🌓</button>
+            </div>
         </div>
-
-    <div class="round-up-option">
-        <input type="checkbox" id="round-up-check">
-        <label for="round-up-check" class="checkbox-label">Round per-person payment up to nearest whole unit</label>
-    </div>
-
-    <div class="results hidden" id="results-display-area">
+        
         <hr>
-        <div class="result-line">
-            <span>Total Tip Amount:</span>
-            <span id="total-tip-amount">0.00</span>
+
+        <div id="calculator-modes">
+            
+            <div id="single-bill-mode" class="calc-mode">
+                <label for="bill-description">What was the bill for?</label>
+                <input type="text" id="bill-description" placeholder="e.g., Dinner at 'The Local'">
+                
+                <label for="bill-total">Bill Total</label>
+                <input type="text" id="bill-total" value="0.00" placeholder="0.00"> 
+        
+                <label for="tip-percent">Tip %</label>
+                <div class="input-group">
+                    <input type="number" id="tip-percent" value="15" min="0" max="100" step="1">
+                    <button class="adjust-btn" data-field="tip-percent" data-delta="1">+</button>
+                    <button class="adjust-btn" data-field="tip-percent" data-delta="-1">−</button>
+                </div>
+            </div>
+
+            <div id="multiple-bills-mode" class="calc-mode hidden">
+                <h3>Line Items</h3>
+                
+                <div class="bill-item-headers">
+                    <span class="desc-header">Description</span>
+                    <span class="amount-header">Amount</span>
+                    <span class="tip-header">Tip %</span>
+                    <span class="remove-header"></span>
+                </div>
+
+                <div id="bill-items-container">
+                    </div>
+                <button id="add-bill-item-btn" class="action-btn">+ Add Item</button>
+            </div>
+
         </div>
-        <div class="result-line">
-            <span>Total with Tip:</span>
-            <span id="total-with-tip">0.00</span>
+
+        <label for="num-people">Number of People</label>
+        <div class="input-group">
+            <input type="number" id="num-people" value="1" min="1" step="1">
+            <button class="adjust-btn" data-field="num-people" data-delta="1">+</button>
+            <button class="adjust-btn" data-field="num-people" data-delta="-1">−</button>
         </div>
-        <div class="result-line final-result">
-            <span>Each Person Pays (Amount):</span>
-            <span id="per-person-pay">0.00</span>
+        
+        <div id="names-container">
+            </div>
+
+        <div class="round-up-option">
+            <input type="checkbox" id="round-up-check">
+            <label for="round-up-check" class="checkbox-label">Round per-person payment up to nearest whole unit</label>
         </div>
+
+        <div class="results hidden" id="results-display-area">
+            <hr>
+            <div class="result-line">
+                <span>Total Tip Amount:</span>
+                <span id="total-tip-amount">0.00</span>
+            </div>
+            <div class="result-line">
+                <span>Total with Tip:</span>
+                <span id="total-with-tip">0.00</span>
+            </div>
+            <div class="result-line final-result">
+                <span>Each Person Pays (Amount):</span>
+                <span id="per-person-pay">0.00</span>
+            </div>
+        </div>
+        
+        <button id="generate-btn" class="action-btn">Generate & View Invoice</button>
+
+        <button id="share-invoice-btn" class="action-btn hidden">Share Invoice</button>
+
     </div>
-    
-    <button id="generate-btn" class="action-btn">Generate & View Invoice</button>
 
-    <button id="share-invoice-btn" class="action-btn hidden">Share Invoice</button>
-
-</div>
-
-<script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
