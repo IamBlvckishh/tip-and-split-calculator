@@ -131,110 +131,206 @@ document.addEventListener('DOMContentLoaded', () => {
         shareInvoiceBtn.classList.remove('hidden');
     }
 
-    // --- 6. CANVAS IMAGE GENERATION FUNCTION ---
+    // --- 6. CANVAS IMAGE GENERATION FUNCTION (Reworked for Mall Invoice Style) ---
     const generateImageFromData = (invoiceData) => {
-        const padding = 30;
-        const lineHeight = 30;
-        const regularFont = '18px sans-serif';
-        const boldFont = 'bold 18px sans-serif';
+        const receiptWidth = 380; // Standard receipt width
+        const padding = 20;
+        const column1End = 230; // X position for the start of the right column text
+        const column2End = receiptWidth - padding; // X position for the end of the right column text
+        const lineHeight = 28;
+        const largeGap = 15;
+        const smallGap = 10;
+        const fontFamily = 'monospace'; // Use monospace for receipt feel
 
+        // Colors
         const isDarkMode = document.body.classList.contains('dark-mode');
-        const bgColor = isDarkMode ? '#000000' : '#ffffff';
-        const textColor = isDarkMode ? '#f8f8f8' : '#000000';
-        const accentColor = isDarkMode ? '#222222' : '#eeeeee';
+        const bgColor = isDarkMode ? '#111111' : '#ffffff';
+        const textColor = isDarkMode ? '#ffffff' : '#000000';
+        const accentColor = isDarkMode ? '#222222' : '#f0f0f0';
 
-        let contentLines = 8; 
-        contentLines += invoiceData.splitDetails.length;
-        if (invoiceData.itemizedList && invoiceData.itemizedList.length > 0) {
-            contentLines += 2; 
-            contentLines += invoiceData.itemizedList.length;
-        }
+        // Helper function for drawing a dotted line
+        const drawDivider = (y) => {
+            ctx.beginPath();
+            ctx.strokeStyle = textColor;
+            ctx.setLineDash([2, 3]);
+            ctx.lineWidth = 1;
+            ctx.moveTo(padding, y);
+            ctx.lineTo(receiptWidth - padding, y);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line style
+        };
         
-        canvas.width = 400; 
-        canvas.height = contentLines * lineHeight + 2 * padding;
+        // Helper to wrap long text (for single bill description)
+        const wrapText = (text, x, y, maxWidth, lineHeight) => {
+            const words = text.split(' ');
+            let line = '';
+            let lines = [];
+
+            for(let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                let metrics = ctx.measureText(testLine);
+                let testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    lines.push(line);
+                    line = words[n] + ' ';
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+            
+            lines.forEach((l) => {
+                ctx.fillText(l.trim(), x, y);
+                y += lineHeight;
+            });
+            return y;
+        };
+
+
+        // --- CALCULATE HEIGHT ---
+        let totalHeight = padding;
+        
+        // Title block
+        totalHeight += 4 * lineHeight; 
+        
+        // Itemized List/Single Bill Description
+        if (invoiceData.mode === 'multiple' && invoiceData.itemizedList.length > 0) {
+            totalHeight += largeGap;
+            totalHeight += invoiceData.itemizedList.length * lineHeight;
+        } else {
+            // Estimate height for wrapped single description (max 2 lines)
+            totalHeight += 2 * lineHeight; 
+        }
+
+        // Totals Block
+        totalHeight += largeGap;
+        totalHeight += 3 * lineHeight; 
+        totalHeight += largeGap;
+        
+        // Split Details Block
+        totalHeight += 2 * lineHeight;
+        totalHeight += invoiceData.splitDetails.length * lineHeight;
+        
+        totalHeight += padding; // Final buffer
+
+        canvas.width = receiptWidth;
+        canvas.height = totalHeight;
 
         let y = padding;
 
         // Background
         ctx.fillStyle = bgColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Text Styles
         ctx.fillStyle = textColor;
         
-        // TITLE
-        ctx.font = 'bold 24px sans-serif';
+        // --- 1. HEADER ---
+        ctx.font = `bold 22px ${fontFamily}`;
         ctx.textAlign = 'center';
-        ctx.fillText("INVOICE SUMMARY", canvas.width / 2, y);
-        y += lineHeight + 15;
+        ctx.fillText("RECEIPT SUMMARY", receiptWidth / 2, y);
+        y += largeGap + 5;
         
-        ctx.font = regularFont;
+        ctx.font = `14px ${fontFamily}`;
+        ctx.fillText(invoiceData.title.toUpperCase(), receiptWidth / 2, y);
+        y += largeGap + 15;
+        
+        drawDivider(y);
+        y += smallGap;
+        
+        ctx.font = `14px ${fontFamily}`;
         ctx.textAlign = 'left';
-
-        // DESCRIPTION & HEADER
-        ctx.fillText(`Description: ${invoiceData.title}`, padding, y);
+        ctx.fillText(`Mode: ${invoiceData.mode === 'single' ? 'Single' : 'Itemized'} Split`, padding, y);
+        ctx.textAlign = 'right';
+        ctx.fillText(`Currency: ${invoiceData.currency}`, column2End, y);
         y += lineHeight;
-        ctx.fillText(`People: ${invoiceData.people} | Currency: ${invoiceData.currency}`, padding, y);
-        y += lineHeight + 10;
-        
-        // TOTALS AREA (Accent Background)
-        ctx.fillStyle = accentColor;
-        ctx.fillRect(0, y - 5, canvas.width, lineHeight * 3 + 5);
-        ctx.fillStyle = textColor;
-        
-        // Total Tip
-        ctx.font = regularFont;
-        ctx.fillText("Total Tip Amount:", padding, y);
-        ctx.textAlign = 'right';
-        ctx.fillText(invoiceData.totals.tipAmount, canvas.width - padding, y);
-        y += lineHeight;
-
-        // Total with Tip
-        ctx.fillText("Total with Tip:", padding, y);
-        ctx.textAlign = 'right';
-        ctx.fillText(invoiceData.totals.grandTotal, canvas.width - padding, y);
-        y += lineHeight + 5;
-        
-        // Final Split
-        ctx.font = boldFont;
-        ctx.fillText("Each Person Pays:", padding, y);
-        ctx.textAlign = 'right';
-        ctx.fillText(invoiceData.totals.perPerson, canvas.width - padding, y);
-        y += lineHeight + 15;
-        
-        // SPLIT DETAILS
-        ctx.font = 'bold 16px sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText("PAYMENT SPLIT:", padding, y);
-        y += lineHeight;
+        ctx.fillText(`People: ${invoiceData.people}`, padding, y);
+        y += largeGap;
 
-        ctx.font = regularFont;
-        invoiceData.splitDetails.forEach(detail => {
-            ctx.fillText(detail.name, padding, y);
+        // --- 2. ITEMIZED BREAKDOWN ---
+        if (invoiceData.mode === 'multiple' && invoiceData.itemizedList.length > 0) {
+            ctx.font = `bold 14px ${fontFamily}`;
+            ctx.fillText("ITEM | TIP %", padding, y);
             ctx.textAlign = 'right';
-            ctx.fillText(detail.amount, canvas.width - padding, y);
+            ctx.fillText("AMOUNT", column2End, y);
+            y += smallGap;
+
+            drawDivider(y);
+            y += smallGap;
+
+            ctx.font = `14px ${fontFamily}`;
+            invoiceData.itemizedList.forEach(item => {
+                ctx.textAlign = 'left';
+                const itemLabel = `${item.description.substring(0, 18)}... | ${item.tipPercent}%`;
+                ctx.fillText(itemLabel, padding, y);
+                
+                ctx.textAlign = 'right';
+                ctx.fillText(item.amount, column2End, y);
+                y += lineHeight;
+            });
+            drawDivider(y);
+            y += smallGap;
+        } else {
+            // Handle single bill description wrapping
+            ctx.font = `14px ${fontFamily}`;
+            ctx.textAlign = 'left';
+            y = wrapText(`Description: ${invoiceData.title}`, padding, y, receiptWidth - 2 * padding, lineHeight);
+            y += smallGap;
+            drawDivider(y);
+            y += smallGap;
+        }
+
+        // --- 3. TOTALS SUMMARY ---
+        ctx.fillStyle = textColor;
+        ctx.font = `16px ${fontFamily}`;
+
+        // Subtotal (Base Cost) - Must be recalculated briefly to show original total
+        const baseTotalClean = getCleanMonetaryValue(billTotalInput) || 0;
+        const baseTotalCalculated = invoiceData.mode === 'multiple' ? baseTotalClean : baseTotalClean; // Re-use simplified total if needed
+
+        // Tip Amount
+        ctx.textAlign = 'left';
+        ctx.fillText("Tip Amount:", padding, y);
+        ctx.textAlign = 'right';
+        ctx.fillText(invoiceData.totals.tipAmount, column2End, y);
+        y += lineHeight;
+
+        // Grand Total
+        ctx.font = `bold 16px ${fontFamily}`;
+        ctx.textAlign = 'left';
+        ctx.fillText("GRAND TOTAL:", padding, y);
+        ctx.textAlign = 'right';
+        ctx.fillText(invoiceData.totals.grandTotal, column2End, y);
+        y += largeGap;
+        
+        drawDivider(y);
+        y += largeGap;
+
+
+        // --- 4. SPLIT DETAILS ---
+        ctx.font = `bold 16px ${fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.fillText("SPLIT BREAKDOWN", receiptWidth / 2, y);
+        y += largeGap;
+        
+        ctx.font = `14px ${fontFamily}`;
+        invoiceData.splitDetails.forEach(detail => {
+            ctx.textAlign = 'left';
+            ctx.fillText(detail.name, padding, y);
+            
+            ctx.textAlign = 'right';
+            ctx.font = (detail.name === 'Single Payer') ? boldFont : regularFont;
+            ctx.fillText(detail.amount, column2End, y);
             y += lineHeight;
-            ctx.textAlign = 'left'; 
         });
 
-        // ITEMIZED LIST
-        if (invoiceData.itemizedList && invoiceData.itemizedList.length > 0) {
-            y += 10;
-            ctx.font = 'bold 16px sans-serif';
-            ctx.fillText("ITEM BREAKDOWN:", padding, y);
-            y += lineHeight;
-
-            ctx.font = '14px sans-serif';
-            invoiceData.itemizedList.forEach(item => {
-                const itemText = `${item.description} (${item.tipPercent}% tip)`;
-                ctx.fillText(itemText, padding, y);
-                ctx.textAlign = 'right';
-                ctx.fillText(item.amount, canvas.width - padding, y);
-                y += lineHeight - 5;
-                ctx.textAlign = 'left';
-            });
-        }
+        drawDivider(y);
+        y += smallGap;
         
+        // --- Final Tagline ---
+        ctx.font = `italic 12px ${fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.fillText("Thank you for using the Split Calculator!", receiptWidth / 2, y);
+
         // Convert canvas to image URL
         return canvas.toDataURL('image/png');
     };
@@ -248,7 +344,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const currency = currencySelect.value;
         const people = parseInt(numPeopleInput.value) || 1;
         const mode = modeSelect.value;
-        const isRounded = roundUpCheck.checked;
 
         // 1. Prepare Data Object
         const invoiceData = {
@@ -256,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
             title: (mode === 'single' ? billDescriptionInput.value.trim() : 'Multiple Items Expense') || 'General Expense',
             currency: currency,
             people: people,
-            isRounded: isRounded,
+            isRounded: roundUpCheck.checked,
             totals: {
                 tipAmount: totalTipDisplay.textContent,
                 grandTotal: totalWithTipDisplay.textContent,
@@ -328,7 +423,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log("Sharing was cancelled by the user.");
             } else {
                 console.error("Share failed:", error);
-                // Fallback to image URL prompt
                 prompt('Share failed or unsupported. Copy this image link instead:', imageURL);
             }
         } finally {
