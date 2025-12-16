@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modeSelect = document.getElementById('mode-select');
     const darkModeBtn = document.getElementById('dark-mode-btn');
     const roundUpCheck = document.getElementById('round-up-check');
+    const resetBtn = document.getElementById('reset-btn'); // NEW: Reset Button
 
     const singleModeDiv = document.getElementById('single-bill-mode');
     const multipleModeDiv = document.getElementById('multiple-bills-mode');
@@ -69,6 +70,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getCleanMonetaryValue = (inputElement) => {
         return parseFloat(inputElement.value.replace(/,/g, '')) || 0;
+    };
+
+
+    // --- NEW: RESET FUNCTION ---
+    const resetCalculator = () => {
+        // Reset Inputs
+        billDescriptionInput.value = '';
+        billTotalInput.value = '0.00';
+        tipPercentInput.value = '15';
+        numPeopleInput.value = '1';
+        roundUpCheck.checked = false;
+        
+        // Reset Modes and Containers
+        modeSelect.value = 'single';
+        switchMode(); // Switches the UI back to single mode and clears multiple items
+        billItemsContainer.innerHTML = ''; // Ensure items are truly cleared
+
+        // Reset Displays
+        calculate(); 
+        
+        // Reset Button Visibility
+        shareInvoiceBtn.classList.add('hidden');
+        generateBtn.classList.remove('hidden');
+
+        console.log("Calculator fields reset.");
     };
 
 
@@ -529,6 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
     addBillItemBtn.addEventListener('click', createBillItem);
     roundUpCheck.addEventListener('change', calculate);
     darkModeBtn.addEventListener('click', toggleDarkMode);
+    resetBtn.addEventListener('click', resetCalculator); // NEW: Reset Listener
     
     generateBtn.addEventListener('click', generateAndViewInvoice);
     shareInvoiceBtn.addEventListener('click', shareInvoice);
