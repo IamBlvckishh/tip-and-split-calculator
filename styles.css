@@ -80,6 +80,7 @@ label {
 }
 
 input[type="number"], 
+input[type="text"], 
 #currency-select,
 #mode-select { 
     width: 100%;
@@ -133,6 +134,13 @@ input[type="number"],
     padding: 0;
 }
 
+/* --- 1. SINGLE BILL TOTAL BIGGER (NEW) --- */
+#single-bill-mode #bill-total {
+    font-size: 1.5em; /* Increase font size */
+    padding: 15px 10px; /* Increase vertical padding */
+    text-align: right;
+}
+
 /* --- MODE SWITCHING & MULTIPLE BILLS --- */
 .calc-mode.hidden {
     display: none;
@@ -140,6 +148,26 @@ input[type="number"],
 .calc-mode h3 {
     margin-bottom: 15px;
 }
+
+/* --- 2. MULTIPLE BILL HEADERS (NEW) --- */
+.bill-item-headers {
+    display: flex;
+    gap: 10px;
+    padding: 0 10px;
+    font-weight: bold;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+.bill-item-headers span {
+    text-align: center;
+    overflow: hidden; /* Prevent text overflow */
+}
+.bill-item-headers .desc-header { flex: 2; text-align: left; }
+.bill-item-headers .amount-header { flex: 1.5; }
+.bill-item-headers .tip-header { flex: 0.8; } /* Adjusted flex for tip */
+.bill-item-headers .remove-header { width: 30px; }
+
 
 /* Individual Bill Line Item */
 .bill-item {
@@ -149,16 +177,30 @@ input[type="number"],
     padding: 10px;
     border: 1px dashed var(--border-color);
 }
-.bill-item input {
-    flex: 1;
+.bill-item .desc-input {
+    flex: 2; /* Description is widest */
+}
+.bill-item .bill-input {
+    flex: 1.5; /* Bill amount is medium */
+}
+.bill-item .tip-input {
+    flex: 0.8; /* 3. Tip amount made slightly wider */
+    min-width: 50px; /* Ensure a minimum width */
+    text-align: center;
 }
 .bill-item .remove-btn {
     width: 30px;
+    flex-shrink: 0;
     background: none;
     color: var(--text-color);
     border: 1px solid var(--border-color);
     cursor: pointer;
     font-weight: bold;
+}
+
+/* --- NAMES LIST --- */
+#names-container input {
+    margin-bottom: 8px;
 }
 
 /* --- ROUND UP OPTION STYLES --- */
