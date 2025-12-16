@@ -223,9 +223,64 @@ input[type="text"],
     font-weight: bold;
 }
 
-/* --- NAMES LIST --- */
-#names-container input {
+/* --- NEW SPLIT MODE TOGGLE STYLES --- */
+.split-mode-toggle {
+    margin-top: 20px;
+    margin-bottom: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+.split-mode-toggle label {
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-top: 0;
+}
+.split-mode-toggle .input-group {
+    display: flex;
+    margin-top: 5px;
+}
+.split-toggle-btn {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-container);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s, color 0.2s;
+    text-transform: uppercase;
+}
+.split-toggle-btn:first-child {
+    border-right: none;
+}
+.split-toggle-btn.active {
+    background-color: var(--border-color);
+    color: var(--bg-container);
+}
+
+/* --- ADJUSTED NAMES CONTAINER FOR PERCENTAGE MODE --- */
+.person-input-group {
+    display: flex;
+    gap: 10px;
     margin-bottom: 8px;
+}
+.person-input-group input[type="text"] {
+    flex: 2; /* Name Input */
+}
+.person-input-group .percent-input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+.person-input-group .percent-input-wrapper input {
+    text-align: right;
+    padding-right: 25px; /* Space for the % sign */
+}
+.percent-input-wrapper span {
+    position: relative;
+    right: 20px;
+    color: var(--text-color);
+    pointer-events: none;
 }
 
 /* --- ROUND UP OPTION STYLES --- */
