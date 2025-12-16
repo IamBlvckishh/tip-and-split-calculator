@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tip & Split Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="calculator-container">
+        <h1>Tip & Split Calculator</h1>
+
+        <label for="bill-total">Bill Total</label>
+        <input type="number" id="bill-total" value="0.00" min="0" step="0.01" placeholder="0.00">
+
+        <label for="tip-percent">Tip %</label>
+        <div class="input-group">
+            <input type="number" id="tip-percent" value="15" min="0" max="100" step="1">
+            <button class="adjust-btn" data-field="tip-percent" data-delta="1">+</button>
+            <button class="adjust-btn" data-field="tip-percent" data-delta="-1">−</button>
+        </div>
+
+        <label for="num-people">Number of People</label>
+        <div class="input-group">
+            <input type="number" id="num-people" value="1" min="1" step="1">
+            <button class="adjust-btn" data-field="num-people" data-delta="1">+</button>
+            <button class="adjust-btn" data-field="num-people" data-delta="-1">−</button>
+        </div>
+
+        <div class="results">
+            <hr>
+            <div class="result-line">
+                <span>Total Tip Amount:</span>
+                <span id="total-tip-amount">$0.00</span>
+            </div>
+            <div class="result-line">
+                <span>Total with Tip:</span>
+                <span id="total-with-tip">$0.00</span>
+            </div>
+            <div class="result-line final-result">
+                <span>Each Person Pays:</span>
+                <span id="per-person-pay">$0.00</span>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
