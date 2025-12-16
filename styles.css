@@ -134,7 +134,7 @@ input[type="text"],
     padding: 0;
 }
 
-/* --- 1. SINGLE BILL TOTAL BIGGER (NEW) --- */
+/* --- SINGLE BILL TOTAL BIGGER --- */
 #single-bill-mode #bill-total {
     font-size: 1.5em; /* Increase font size */
     padding: 15px 10px; /* Increase vertical padding */
@@ -149,7 +149,7 @@ input[type="text"],
     margin-bottom: 15px;
 }
 
-/* --- 2. MULTIPLE BILL HEADERS (NEW) --- */
+/* --- MULTIPLE BILL HEADERS --- */
 .bill-item-headers {
     display: flex;
     gap: 10px;
@@ -161,11 +161,11 @@ input[type="text"],
 }
 .bill-item-headers span {
     text-align: center;
-    overflow: hidden; /* Prevent text overflow */
+    overflow: hidden; 
 }
 .bill-item-headers .desc-header { flex: 2; text-align: left; }
 .bill-item-headers .amount-header { flex: 1.5; }
-.bill-item-headers .tip-header { flex: 0.8; } /* Adjusted flex for tip */
+.bill-item-headers .tip-header { flex: 0.8; } 
 .bill-item-headers .remove-header { width: 30px; }
 
 
@@ -178,14 +178,14 @@ input[type="text"],
     border: 1px dashed var(--border-color);
 }
 .bill-item .desc-input {
-    flex: 2; /* Description is widest */
+    flex: 2; 
 }
 .bill-item .bill-input {
-    flex: 1.5; /* Bill amount is medium */
+    flex: 1.5; 
 }
 .bill-item .tip-input {
-    flex: 0.8; /* 3. Tip amount made slightly wider */
-    min-width: 50px; /* Ensure a minimum width */
+    flex: 0.8; 
+    min-width: 50px; 
     text-align: center;
 }
 .bill-item .remove-btn {
@@ -249,6 +249,9 @@ input[type="text"],
 /* --- RESULTS & ACTION BUTTONS --- */
 .results {
     margin-top: 30px;
+}
+.hidden {
+    display: none !important; 
 }
 hr {
     border: 1px solid var(--border-color);
