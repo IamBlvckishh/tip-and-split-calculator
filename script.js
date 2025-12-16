@@ -1,15 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. ELEMENT SELECTION (Added roundUpCheck) ---
+    // --- 1. ELEMENT SELECTION (Added billDescriptionInput) ---
     const currencySelect = document.getElementById('currency-select');
     const modeSelect = document.getElementById('mode-select');
     const darkModeBtn = document.getElementById('dark-mode-btn');
-    const roundUpCheck = document.getElementById('round-up-check'); // NEW
+    const roundUpCheck = document.getElementById('round-up-check');
 
     const singleModeDiv = document.getElementById('single-bill-mode');
     const multipleModeDiv = document.getElementById('multiple-bills-mode');
     const billItemsContainer = document.getElementById('bill-items-container');
     const addBillItemBtn = document.getElementById('add-bill-item-btn');
 
+    const billDescriptionInput = document.getElementById('bill-description'); // NEW
     const billTotalInput = document.getElementById('bill-total');
     const tipPercentInput = document.getElementById('tip-percent');
     const numPeopleInput = document.getElementById('num-people');
@@ -22,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. CURRENCY AND FORMATTING HELPERS (No Change) ---
     const getLocaleForCurrency = (currencyCode) => {
-        // Simplified locale map
         switch (currencyCode) {
             case 'EUR': return 'de-DE';
             case 'GBP': return 'en-GB';
@@ -38,20 +38,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: selectedCurrency,
-            // IMPORTANT: If rounded, we still want to show decimals for clean display.
-            minimumFractionDigits: 2, 
+            minimumFractionDigits: 2,
         }).format(amount);
     };
 
 
-    // --- 3. MAIN CALCULATION FUNCTION (Updated for Rounding) ---
+    // --- 3. MAIN CALCULATION FUNCTION (No logic change needed) ---
     const calculate = () => {
-        let baseTotal = 0; // Total bill without tips (used for multiple mode clarity)
+        let baseTotal = 0;
         let totalTipAmount = 0;
         const people = parseInt(numPeopleInput.value) || 1;
-        const shouldRoundUp = roundUpCheck.checked; // Check the rounding state // NEW
+        const shouldRoundUp = roundUpCheck.checked;
 
-        // Ensure people is at least 1
         if (people < 1) {
             numPeopleInput.value = 1;
             return calculate();
@@ -84,29 +82,23 @@ document.addEventListener('DOMContentLoaded', () => {
         let totalBill = baseTotal + totalTipAmount;
         let perPersonCost = totalBill / people;
         
-        // APPLY ROUNDING LOGIC // NEW
+        // APPLY ROUNDING LOGIC
         let roundedTotalBill = totalBill; 
         let extraTipAdded = 0;
 
         if (shouldRoundUp) {
             const roundedPerPerson = Math.ceil(perPersonCost);
             
-            // Calculate the new total bill based on the rounded per-person cost
             roundedTotalBill = roundedPerPerson * people;
-            
-            // Calculate how much "extra" tip was added due to rounding
             extraTipAdded = roundedTotalBill - totalBill;
             
-            // The cost each person pays is now the rounded amount
             perPersonCost = roundedPerPerson; 
-            
-            // The displayed tip amount must be updated to include the rounding extra
             totalTipAmount += extraTipAdded;
         }
 
         // Update the display
         totalTipDisplay.textContent = formatCurrency(totalTipAmount);
-        totalWithTipDisplay.textContent = formatCurrency(roundedTotalBill); // Use rounded total
+        totalWithTipDisplay.textContent = formatCurrency(roundedTotalBill);
         perPersonDisplay.textContent = formatCurrency(perPersonCost);
     };
 
@@ -127,11 +119,15 @@ document.addEventListener('DOMContentLoaded', () => {
     darkModeBtn.addEventListener('click', toggleDarkMode);
 
 
-    // --- 5. MODE SWITCHING AND MULTIPLE BILL LOGIC (No Change) ---
+    // --- 5. MODE SWITCHING AND MULTIPLE BILL LOGIC (Updated createBillItem) ---
     const switchMode = () => {
         if (modeSelect.value === 'multiple') {
             singleModeDiv.classList.add('hidden');
             multipleModeDiv.classList.remove('hidden');
+            // Ensure at least one item exists when switching to multiple mode
+            if (billItemsContainer.children.length === 0) {
+                 createBillItem();
+            }
         } else {
             multipleModeDiv.classList.add('hidden');
             singleModeDiv.classList.remove('hidden');
@@ -139,16 +135,19 @@ document.addEventListener('DOMContentLoaded', () => {
         calculate();
     };
     
+    // Updated function to include a description field for each item
     const createBillItem = () => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'bill-item';
 
         itemDiv.innerHTML = `
-            <input type="number" class="bill-input" value="0.00" min="0" step="0.01" placeholder="Bill Amount">
+            <input type="text" class="desc-input" placeholder="Item Name (e.g., Pizza)">
+            <input type="number" class="bill-input" value="0.00" min="0" step="0.01" placeholder="Amount">
             <input type="number" class="tip-input" value="15" min="0" max="100" step="1" placeholder="Tip %">
             <button class="remove-btn" aria-label="Remove item">X</button>
         `;
         
+        // Add listeners for the new inputs (including the description text input)
         itemDiv.querySelectorAll('input').forEach(input => {
             input.addEventListener('input', calculate);
         });
@@ -162,12 +161,13 @@ document.addEventListener('DOMContentLoaded', () => {
         calculate();
     };
     
+    // Initial setup for multiple mode
     if (billItemsContainer.children.length === 0) {
         createBillItem();
     }
 
 
-    // --- 6. INVOICE GENERATION LOGIC (No Change) ---
+    // --- 6. INVOICE GENERATION LOGIC (Major Update for Descriptions) ---
     const generateInvoice = () => {
         const totalBill = totalWithTipDisplay.textContent;
         const perPersonPay = perPersonDisplay.textContent;
@@ -175,21 +175,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const currency = currencySelect.value;
         const people = numPeopleInput.value;
         const mode = modeSelect.value === 'single' ? 'Single Bill' : 'Multiple Bills';
-        const isRounded = roundUpCheck.checked ? ' (Rounded)' : ''; // ADDED ROUNDING FLAG
+        const isRounded = roundUpCheck.checked ? ' (Rounded)' : '';
 
+        let mainDescription = '';
         let itemizedList = '';
-        if (modeSelect.value === 'multiple') {
+
+        if (modeSelect.value === 'single') {
+            // Get single description and use it as the main description
+            mainDescription = billDescriptionInput.value.trim() || 'General Expense';
+
+        } else if (modeSelect.value === 'multiple') {
+            // Set a general description for the whole multiple bill
+            mainDescription = 'Multiple Items Expense'; 
+            
+            // Build the itemized list
             const items = Array.from(document.querySelectorAll('.bill-item')).map((item, index) => {
+                const description = item.querySelector('.desc-input').value.trim() || `Item ${index + 1}`;
                 const bill = parseFloat(item.querySelector('.bill-input').value) || 0;
                 const tip = parseFloat(item.querySelector('.tip-input').value) || 0;
-                return `Item ${index + 1}: ${formatCurrency(bill)} + ${tip}% Tip`;
+                
+                return `[${description}] ${formatCurrency(bill)} + ${tip}% Tip`;
             }).join('\n');
-            itemizedList = `\n--- Items ---\n${items}`;
+            
+            itemizedList = `\n--- Item Details ---\n${items}`;
         }
         
         const invoiceText = `
         🧾 Tip & Split Summary (${mode}) 🧾
-
+        
+        DESCRIPTION: ${mainDescription}
+        
         Currency Used: ${currency}
         Number of People: ${people}
         
@@ -207,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (navigator.share) {
             navigator.share({
-                title: 'Tip & Split Invoice',
+                title: `Invoice: ${mainDescription}`,
                 text: invoiceText,
             }).catch(error => {
                 alert('Share failed or was cancelled. Copy this text instead:\n\n' + invoiceText);
@@ -218,17 +233,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- 7. EVENT LISTENERS (Added listener for Round Up Checkbox) ---
+    // --- 7. EVENT LISTENERS ---
     currencySelect.addEventListener('change', calculate);
     numPeopleInput.addEventListener('input', calculate);
     modeSelect.addEventListener('change', switchMode);
     addBillItemBtn.addEventListener('click', createBillItem);
     generateInvoiceBtn.addEventListener('click', generateInvoice);
-    roundUpCheck.addEventListener('change', calculate); // NEW LISTENER
+    roundUpCheck.addEventListener('change', calculate);
 
-    // Single mode listeners
+    // Single mode listeners (Added listener for description input)
+    billDescriptionInput.addEventListener('input', generateInvoice); // Only need to update invoice, not recalculate
     billTotalInput.addEventListener('input', calculate);
     tipPercentInput.addEventListener('input', calculate);
+    
     document.querySelectorAll('.adjust-btn').forEach(button => {
         button.addEventListener('click', (e) => {
             const fieldId = e.target.dataset.field;
