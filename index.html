@@ -83,6 +83,14 @@
             <button class="adjust-btn" data-field="num-people" data-delta="-1">−</button>
         </div>
         
+        <div class="split-mode-toggle">
+            <label>Split Type:</label>
+            <div class="input-group">
+                <button id="equal-split-btn" class="split-toggle-btn active" data-mode="equal">Equal Split</button>
+                <button id="percent-split-btn" class="split-toggle-btn" data-mode="percent">Percentage Split</button>
+            </div>
+        </div>
+
         <div id="names-container">
             </div>
 
@@ -91,7 +99,7 @@
             <label for="round-up-check" class="checkbox-label">Round per-person payment up to nearest whole unit</label>
         </div>
 
-        <div class="results" id="results-display-area">
+        <div class="results" id="results-display-area" data-person-costs="{}">
             <hr>
             <div class="result-line">
                 <span>Total Tip Amount:</span>
@@ -102,7 +110,7 @@
                 <span id="total-with-tip">0.00</span>
             </div>
             <div class="result-line final-result">
-                <span>Each Person Pays (Amount):</span>
+                <span>Each Person Pays (Average):</span>
                 <span id="per-person-pay">0.00</span>
             </div>
         </div>
