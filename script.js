@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modeSelect = document.getElementById('mode-select');
     const darkModeBtn = document.getElementById('dark-mode-btn');
     const roundUpCheck = document.getElementById('round-up-check');
-    const resetBtn = document.getElementById('reset-btn'); // NEW: Reset Button
+    const resetBtn = document.getElementById('reset-btn'); 
 
     const singleModeDiv = document.getElementById('single-bill-mode');
     const multipleModeDiv = document.getElementById('multiple-bills-mode');
@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const numPeopleInput = document.getElementById('num-people');
     
     const namesContainer = document.getElementById('names-container');
+    const equalSplitBtn = document.getElementById('equal-split-btn'); // NEW
+    const percentSplitBtn = document.getElementById('percent-split-btn'); // NEW
 
     const totalTipDisplay = document.getElementById('total-tip-amount');
     const totalWithTipDisplay = document.getElementById('total-with-tip');
@@ -31,8 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const ctx = canvas.getContext('2d');
     const statusMessage = document.getElementById('image-generation-status');
 
+    // --- 2. GLOBAL STATE ---
+    let splitMode = 'equal'; // 'equal' or 'percent'
 
-    // --- 2. INPUT FORMATTING FUNCTION ---
+
+    // --- 3. INPUT FORMATTING FUNCTION ---
     const formatNumberInput = (e) => {
         let value = e.target.value;
         let cleanValue = value.replace(/[^\d.]/g, ''); 
@@ -47,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         generateBtn.classList.remove('hidden');
     };
 
-    // --- 3. CURRENCY AND FORMATTING HELPERS ---
+    // --- 4. CURRENCY AND FORMATTING HELPERS ---
     const getLocaleForCurrency = (currencyCode) => {
         switch (currencyCode) {
             case 'EUR': return 'de-DE';
@@ -73,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- NEW: RESET FUNCTION ---
+    // --- 5. RESET FUNCTION ---
     const resetCalculator = () => {
         // Reset Inputs
         billDescriptionInput.value = '';
@@ -84,8 +89,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Reset Modes and Containers
         modeSelect.value = 'single';
-        switchMode(); // Switches the UI back to single mode and clears multiple items
-        billItemsContainer.innerHTML = ''; // Ensure items are truly cleared
+        switchMode(); 
+        billItemsContainer.innerHTML = ''; 
+        setSplitMode('equal'); // Reset split mode to default
 
         // Reset Displays
         calculate(); 
@@ -98,32 +104,31 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- 4. CORE CALCULATION FUNCTION ---
+    // --- 6. CORE CALCULATION FUNCTION (UPDATED for Percentage Split) ---
     const calculate = () => {
         let baseTotal = 0;
         let totalTipAmount = 0;
         const people = parseInt(numPeopleInput.value) || 1;
         const shouldRoundUp = roundUpCheck.checked;
-
+        const personCostMap = {};
+        
         if (people < 1) {
             numPeopleInput.value = 1;
             updateNamesList(); 
             return calculate();
         }
-
+        
+        // 1. Calculate the full bill and tip (same logic as before)
         if (modeSelect.value === 'single') {
             const bill = getCleanMonetaryValue(billTotalInput); 
             const tipPercent = parseFloat(tipPercentInput.value) || 0;
             baseTotal = bill;
             totalTipAmount = bill * (tipPercent / 100);
-
         } else if (modeSelect.value === 'multiple') {
             const billItems = document.querySelectorAll('.bill-item');
             billItems.forEach(item => {
-                const billInput = item.querySelector('.bill-input');
-                const tipInput = item.querySelector('.tip-input');
-                const billAmount = getCleanMonetaryValue(billInput); 
-                const tipPercent = parseFloat(tipInput.value) || 0;
+                const billAmount = getCleanMonetaryValue(item.querySelector('.bill-input')); 
+                const tipPercent = parseFloat(item.querySelector('.tip-input').value) || 0;
                 const itemTip = billAmount * (tipPercent / 100);
                 baseTotal += billAmount;
                 totalTipAmount += itemTip;
@@ -131,41 +136,185 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         let totalBill = baseTotal + totalTipAmount;
-        let perPersonCost = totalBill / people;
+        let roundedTotalBill = totalBill;
+        let perPersonCost = 0;
         
-        let roundedTotalBill = totalBill; 
-        let extraTipAdded = 0;
+        // 2. Split the bill based on mode
+        
+        if (splitMode === 'equal' || people <= 1) {
+            // Equal Split (Standard logic)
+            perPersonCost = totalBill / people;
+            
+            if (shouldRoundUp) {
+                perPersonCost = Math.ceil(perPersonCost);
+            }
+            
+            roundedTotalBill = perPersonCost * people; // Update total for rounding
+            
+            // Map cost to each person
+            const personNameInputs = Array.from(document.querySelectorAll('.person-name-input'));
+            personNameInputs.forEach((input, index) => {
+                const name = input.value.trim() || `Person ${index + 1}`;
+                personCostMap[name] = perPersonCost;
+            });
+            
+        } else if (splitMode === 'percent') {
+            // Percentage Split
+            const personInputs = Array.from(document.querySelectorAll('.person-input-group'));
+            let totalPercentage = 0;
+            let percentageData = [];
 
-        if (shouldRoundUp) {
-            const roundedPerPerson = Math.ceil(perPersonCost);
-            roundedTotalBill = roundedPerPerson * people;
-            extraTipAdded = roundedTotalBill - totalBill;
-            perPersonCost = roundedPerPerson; 
-            totalTipAmount += extraTipAdded;
+            // Gather percentages
+            personInputs.forEach(group => {
+                const name = group.querySelector('.person-name-input').value.trim();
+                const percent = parseFloat(group.querySelector('.person-percent-input').value) || 0;
+                totalPercentage += percent;
+                percentageData.push({ name, percent });
+            });
+
+            // If percentages don't sum to 100, calculate required adjustment
+            const adjustmentFactor = totalPercentage > 0 ? totalBill / totalPercentage : 0;
+
+            // Distribute totalBill based on percentage (and handle the necessary rounding/adjustment for the last person)
+            let totalDistributed = 0;
+            percentageData.forEach((data, index) => {
+                let cost = 0;
+                
+                // Calculate base cost based on adjusted percentage factor
+                let calculatedCost = data.percent * adjustmentFactor;
+
+                if (index < percentageData.length - 1) {
+                    // For all but the last person, round down to the penny to manage floating point errors
+                    cost = Math.floor(calculatedCost * 100) / 100;
+                } else {
+                    // Last person gets the remaining balance to ensure totalBill is paid
+                    cost = totalBill - totalDistributed; 
+                }
+                
+                if (shouldRoundUp) {
+                    cost = Math.ceil(cost); // Apply rounding up to whole unit
+                }
+                
+                personCostMap[data.name || `Person ${index + 1}`] = cost;
+                totalDistributed += cost;
+            });
+            
+            // Re-calculate the grand total based on the distributed (and possibly rounded) shares
+            roundedTotalBill = Object.values(personCostMap).reduce((sum, cost) => sum + cost, 0);
+            
+            // Calculate average for display purposes
+            perPersonCost = roundedTotalBill / people;
         }
 
-        totalTipDisplay.textContent = formatCurrency(totalTipAmount);
+
+        // 3. Finalize and Display Results
+        let finalTipAmount = roundedTotalBill - baseTotal; // Tip is calculated last to include rounding adjustments
+        
+        totalTipDisplay.textContent = formatCurrency(finalTipAmount);
         totalWithTipDisplay.textContent = formatCurrency(roundedTotalBill);
+        
+        // Display the calculated average cost
         perPersonDisplay.textContent = formatCurrency(perPersonCost);
+        
+        // Store the final split values for the invoice generation
+        resultsDisplayArea.dataset.personCosts = JSON.stringify(personCostMap);
+    };
+    
+    
+    // --- 7. HELPER: Dynamically update person inputs based on split mode ---
+    const updateNamesList = () => {
+        const peopleCount = parseInt(numPeopleInput.value) || 1;
+        // Collect existing names and percentages to preserve them on redraw
+        const existingData = Array.from(namesContainer.querySelectorAll('.person-input-group')).map(group => ({
+            name: group.querySelector('.person-name-input').value,
+            percent: group.querySelector('.person-percent-input') ? group.querySelector('.person-percent-input').value : '',
+        }));
+        
+        namesContainer.innerHTML = '';
+
+        if (peopleCount > 1) {
+            const heading = document.createElement('label');
+            heading.textContent = 'Split Details:';
+            namesContainer.appendChild(heading);
+
+            for (let i = 0; i < peopleCount; i++) {
+                const data = existingData[i] || {};
+                const namePlaceholder = `Person ${i + 1}`;
+                
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'person-input-group';
+                
+                // Name Input
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.className = 'person-name-input';
+                nameInput.placeholder = data.name || namePlaceholder;
+                nameInput.value = data.name || '';
+                nameInput.addEventListener('input', calculate); 
+                groupDiv.appendChild(nameInput);
+                
+                if (splitMode === 'percent') {
+                    // Percentage Input (Only in Percent Mode)
+                    const percentWrapper = document.createElement('div');
+                    percentWrapper.className = 'percent-input-wrapper';
+                    
+                    const percentInput = document.createElement('input');
+                    percentInput.type = 'number';
+                    percentInput.className = 'person-percent-input';
+                    percentInput.placeholder = '0';
+                    // Set default value only if the percentage is not already saved
+                    percentInput.value = data.percent || Math.floor(100 / peopleCount); 
+                    percentInput.min = '0';
+                    
+                    percentInput.addEventListener('input', calculate);
+                    percentWrapper.appendChild(percentInput);
+
+                    const percentSign = document.createElement('span');
+                    percentSign.textContent = '%';
+                    percentWrapper.appendChild(percentSign);
+                    
+                    groupDiv.appendChild(percentWrapper);
+                }
+
+                namesContainer.appendChild(groupDiv);
+            }
+        } else if (peopleCount === 1) {
+            // For a single person
+            const data = existingData[0] || {};
+            
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'person-input-group';
+
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'person-name-input';
+            nameInput.placeholder = 'Payer Name (e.g., Jane Doe)';
+            nameInput.value = data.name || '';
+            nameInput.addEventListener('input', calculate);
+            groupDiv.appendChild(nameInput);
+
+            namesContainer.appendChild(groupDiv);
+        }
+        calculate();
     };
 
 
-    // --- 5. GENERATE & VIEW INVOICE FUNCTION ---
+    // --- 8. GENERATE & VIEW INVOICE FUNCTION ---
     const generateAndViewInvoice = () => {
         calculate();
         generateBtn.classList.add('hidden');
         shareInvoiceBtn.classList.remove('hidden');
     }
 
-    // --- 6. CANVAS IMAGE GENERATION FUNCTION (Mall Invoice Style) ---
+    // --- 9. CANVAS IMAGE GENERATION FUNCTION (Mall Invoice Style) ---
     const generateImageFromData = (invoiceData) => {
-        const receiptWidth = 380; // Standard receipt width
+        const receiptWidth = 380; 
         const padding = 20;
-        const column2End = receiptWidth - padding; // X position for the end of the right column text
+        const column2End = receiptWidth - padding; 
         const lineHeight = 28;
         const largeGap = 15;
         const smallGap = 10;
-        const fontFamily = 'monospace'; // Use monospace for receipt feel
+        const fontFamily = 'monospace'; 
         const boldFont = `bold 18px ${fontFamily}`;
         const regularFont = `14px ${fontFamily}`;
 
@@ -183,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.moveTo(padding, y);
             ctx.lineTo(receiptWidth - padding, y);
             ctx.stroke();
-            ctx.setLineDash([]); // Reset line style
+            ctx.setLineDash([]); 
         };
         
         // Helper to wrap long text (for single bill description)
@@ -357,7 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return canvas.toDataURL('image/png');
     };
 
-    // --- 7. SHARE INVOICE FUNCTION ---
+    // --- 10. SHARE INVOICE FUNCTION ---
     const shareInvoice = async () => {
         calculate(); 
         statusMessage.classList.remove('hidden');
@@ -384,14 +533,18 @@ document.addEventListener('DOMContentLoaded', () => {
             itemizedList: [],
         };
         
-        // Prepare Split Details
-        if (people > 1) {
-            const personNameInputs = Array.from(document.querySelectorAll('.person-name-input'));
-            invoiceData.splitDetails = personNameInputs.map((input, index) => ({
-                name: input.value.trim() || `Person ${index + 1}`,
-                amount: invoiceData.totals.perPerson
+        // Prepare Split Details (UPDATED to use stored personCosts)
+        const personCostsJson = resultsDisplayArea.dataset.personCosts;
+        const personCostMap = personCostsJson ? JSON.parse(personCostsJson) : {};
+
+        if (Object.keys(personCostMap).length > 0) {
+            // Use the map generated in the calculate function
+            invoiceData.splitDetails = Object.entries(personCostMap).map(([name, amount]) => ({
+                name: name,
+                amount: formatCurrency(amount)
             }));
         } else {
+             // Fallback for single payer
              invoiceData.splitDetails = [{ 
                  name: document.querySelector('.person-name-input') ? document.querySelector('.person-name-input').value.trim() || 'Single Payer' : 'Single Payer',
                  amount: invoiceData.totals.grandTotal
@@ -474,26 +627,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- 8. HELPER FUNCTIONS AND EVENT LISTENERS ---
+    // --- 11. HELPER FUNCTIONS AND EVENT LISTENERS ---
     
-    const updateNamesList = () => {
-        const peopleCount = parseInt(numPeopleInput.value) || 1;
-        const existingInputs = Array.from(namesContainer.querySelectorAll('input'));
-        const existingNames = existingInputs.map(input => input.value);
-        namesContainer.innerHTML = '';
-        if (peopleCount > 1) {
-            const heading = document.createElement('label');
-            heading.textContent = 'Who is splitting the bill?';
-            namesContainer.appendChild(heading);
-            for (let i = 0; i < peopleCount; i++) {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'person-name-input';
-                input.placeholder = existingNames[i] || `Person ${i + 1}`;
-                input.value = existingNames[i] || '';
-                namesContainer.appendChild(input);
-            }
-        }
+    const setSplitMode = (mode) => {
+        splitMode = mode;
+        equalSplitBtn.classList.remove('active');
+        percentSplitBtn.classList.remove('active');
+        document.getElementById(`${mode}-split-btn`).classList.add('active');
+        updateNamesList(); // Redraw inputs to show/hide percentages
     };
 
     const switchMode = () => {
@@ -555,7 +696,11 @@ document.addEventListener('DOMContentLoaded', () => {
     addBillItemBtn.addEventListener('click', createBillItem);
     roundUpCheck.addEventListener('change', calculate);
     darkModeBtn.addEventListener('click', toggleDarkMode);
-    resetBtn.addEventListener('click', resetCalculator); // NEW: Reset Listener
+    resetBtn.addEventListener('click', resetCalculator); 
+    
+    // NEW Split Mode Listeners
+    equalSplitBtn.addEventListener('click', () => setSplitMode('equal'));
+    percentSplitBtn.addEventListener('click', () => setSplitMode('percent'));
     
     generateBtn.addEventListener('click', generateAndViewInvoice);
     shareInvoiceBtn.addEventListener('click', shareInvoice);
@@ -610,6 +755,6 @@ document.addEventListener('DOMContentLoaded', () => {
         createBillItem();
     }
     
+    // Initial call to set up the split inputs and calculate the default state
     updateNamesList();
-    calculate();
 });
