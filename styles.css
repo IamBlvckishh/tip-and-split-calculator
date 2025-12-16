@@ -280,3 +280,13 @@ hr {
     font-size: 1.1em;
     text-transform: uppercase;
 }
+
+/* --- New Status/Canvas Styles --- */
+.status-message {
+    text-align: center;
+    padding: 15px;
+    margin-top: 20px;
+    font-weight: bold;
+    color: var(--bg-container);
+    background-color: var(--border-color);
+}
