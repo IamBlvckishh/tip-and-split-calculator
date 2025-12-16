@@ -131,22 +131,22 @@ document.addEventListener('DOMContentLoaded', () => {
         shareInvoiceBtn.classList.remove('hidden');
     }
 
-    // --- 6. CANVAS IMAGE GENERATION FUNCTION (Reworked for Mall Invoice Style) ---
+    // --- 6. CANVAS IMAGE GENERATION FUNCTION (Mall Invoice Style) ---
     const generateImageFromData = (invoiceData) => {
         const receiptWidth = 380; // Standard receipt width
         const padding = 20;
-        const column1End = 230; // X position for the start of the right column text
         const column2End = receiptWidth - padding; // X position for the end of the right column text
         const lineHeight = 28;
         const largeGap = 15;
         const smallGap = 10;
         const fontFamily = 'monospace'; // Use monospace for receipt feel
+        const boldFont = `bold 18px ${fontFamily}`;
+        const regularFont = `14px ${fontFamily}`;
 
         // Colors
         const isDarkMode = document.body.classList.contains('dark-mode');
         const bgColor = isDarkMode ? '#111111' : '#ffffff';
         const textColor = isDarkMode ? '#ffffff' : '#000000';
-        const accentColor = isDarkMode ? '#222222' : '#f0f0f0';
 
         // Helper function for drawing a dotted line
         const drawDivider = (y) => {
@@ -229,14 +229,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillText("RECEIPT SUMMARY", receiptWidth / 2, y);
         y += largeGap + 5;
         
-        ctx.font = `14px ${fontFamily}`;
+        ctx.font = regularFont;
         ctx.fillText(invoiceData.title.toUpperCase(), receiptWidth / 2, y);
         y += largeGap + 15;
         
         drawDivider(y);
         y += smallGap;
         
-        ctx.font = `14px ${fontFamily}`;
+        ctx.font = regularFont;
         ctx.textAlign = 'left';
         ctx.fillText(`Mode: ${invoiceData.mode === 'single' ? 'Single' : 'Itemized'} Split`, padding, y);
         ctx.textAlign = 'right';
@@ -257,10 +257,10 @@ document.addEventListener('DOMContentLoaded', () => {
             drawDivider(y);
             y += smallGap;
 
-            ctx.font = `14px ${fontFamily}`;
+            ctx.font = regularFont;
             invoiceData.itemizedList.forEach(item => {
                 ctx.textAlign = 'left';
-                const itemLabel = `${item.description.substring(0, 18)}... | ${item.tipPercent}%`;
+                const itemLabel = `${item.description.substring(0, 18).padEnd(18, ' ')} | ${String(item.tipPercent).padStart(2, ' ')}%`;
                 ctx.fillText(itemLabel, padding, y);
                 
                 ctx.textAlign = 'right';
@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
             y += smallGap;
         } else {
             // Handle single bill description wrapping
-            ctx.font = `14px ${fontFamily}`;
+            ctx.font = regularFont;
             ctx.textAlign = 'left';
             y = wrapText(`Description: ${invoiceData.title}`, padding, y, receiptWidth - 2 * padding, lineHeight);
             y += smallGap;
@@ -281,11 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- 3. TOTALS SUMMARY ---
         ctx.fillStyle = textColor;
-        ctx.font = `16px ${fontFamily}`;
-
-        // Subtotal (Base Cost) - Must be recalculated briefly to show original total
-        const baseTotalClean = getCleanMonetaryValue(billTotalInput) || 0;
-        const baseTotalCalculated = invoiceData.mode === 'multiple' ? baseTotalClean : baseTotalClean; // Re-use simplified total if needed
+        ctx.font = regularFont;
 
         // Tip Amount
         ctx.textAlign = 'left';
@@ -295,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
         y += lineHeight;
 
         // Grand Total
-        ctx.font = `bold 16px ${fontFamily}`;
+        ctx.font = boldFont;
         ctx.textAlign = 'left';
         ctx.fillText("GRAND TOTAL:", padding, y);
         ctx.textAlign = 'right';
@@ -312,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillText("SPLIT BREAKDOWN", receiptWidth / 2, y);
         y += largeGap;
         
-        ctx.font = `14px ${fontFamily}`;
+        ctx.font = regularFont;
         invoiceData.splitDetails.forEach(detail => {
             ctx.textAlign = 'left';
             ctx.fillText(detail.name, padding, y);
@@ -344,6 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currency = currencySelect.value;
         const people = parseInt(numPeopleInput.value) || 1;
         const mode = modeSelect.value;
+        const isRounded = roundUpCheck.checked;
 
         // 1. Prepare Data Object
         const invoiceData = {
@@ -351,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
             title: (mode === 'single' ? billDescriptionInput.value.trim() : 'Multiple Items Expense') || 'General Expense',
             currency: currency,
             people: people,
-            isRounded: roundUpCheck.checked,
+            isRounded: isRounded,
             totals: {
                 tipAmount: totalTipDisplay.textContent,
                 grandTotal: totalWithTipDisplay.textContent,
@@ -389,6 +386,22 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // Generate Text Fallback (always ready in case image fails)
+        const textFallback = `
+    🧾 Invoice Summary (${invoiceData.mode === 'single' ? 'Single Bill' : 'Itemized Bill'}) 🧾
+
+    Description: ${invoiceData.title}
+    
+    Total Tip Paid: ${invoiceData.totals.tipAmount}
+    --------------------------
+    GRAND TOTAL${isRounded ? ' (Rounded)' : ''}: ${invoiceData.totals.grandTotal}
+
+    --- SPLIT DETAILS ---
+    ${invoiceData.splitDetails.map(d => `- ${d.name}: ${d.amount}`).join('\n')}
+    
+    ${invoiceData.itemizedList.length > 0 ? '\n--- ITEM BREAKDOWN ---\n' + invoiceData.itemizedList.map(i => `${i.description} (${i.amount} + ${i.tipPercent}% tip)`).join('\n') : ''}
+    `;
+
         // 2. Generate Image URL 
         await new Promise(resolve => setTimeout(resolve, 50)); 
         let imageURL;
@@ -396,10 +409,11 @@ document.addEventListener('DOMContentLoaded', () => {
             imageURL = generateImageFromData(invoiceData);
         } catch (e) {
             console.error("Canvas Image Generation Failed:", e);
-            alert("Could not generate image for sharing. Try copying the link manually.");
+            // CRITICAL FALLBACK: If image creation fails, fall back to text and return.
+            prompt('Could not generate image. Copy the text summary below:', textFallback);
             statusMessage.classList.add('hidden');
             shareInvoiceBtn.disabled = false;
-            return;
+            return; 
         }
 
         // 3. Use Web Share API for the image file
@@ -415,6 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     text: `Tip & Split Summary: ${invoiceData.totals.grandTotal}`,
                 });
             } else {
+                 // If file sharing is not supported, provide the image link
                  prompt(`Image generated successfully. Copy this link or save the image below:`, imageURL);
             }
 
@@ -423,6 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log("Sharing was cancelled by the user.");
             } else {
                 console.error("Share failed:", error);
+                // If share fails *after* image generation, fall back to image URL prompt
                 prompt('Share failed or unsupported. Copy this image link instead:', imageURL);
             }
         } finally {
