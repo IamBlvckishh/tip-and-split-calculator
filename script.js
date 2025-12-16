@@ -1,8 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. ELEMENT SELECTION ---
+    // --- 1. ELEMENT SELECTION (Added roundUpCheck) ---
     const currencySelect = document.getElementById('currency-select');
     const modeSelect = document.getElementById('mode-select');
     const darkModeBtn = document.getElementById('dark-mode-btn');
+    const roundUpCheck = document.getElementById('round-up-check'); // NEW
 
     const singleModeDiv = document.getElementById('single-bill-mode');
     const multipleModeDiv = document.getElementById('multiple-bills-mode');
@@ -19,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateInvoiceBtn = document.getElementById('generate-invoice-btn');
 
 
-    // --- 2. CURRENCY AND FORMATTING HELPERS ---
+    // --- 2. CURRENCY AND FORMATTING HELPERS (No Change) ---
     const getLocaleForCurrency = (currencyCode) => {
         // Simplified locale map
         switch (currencyCode) {
@@ -37,16 +38,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: selectedCurrency,
-            minimumFractionDigits: 2,
+            // IMPORTANT: If rounded, we still want to show decimals for clean display.
+            minimumFractionDigits: 2, 
         }).format(amount);
     };
 
 
-    // --- 3. MAIN CALCULATION FUNCTION (Handles both modes) ---
+    // --- 3. MAIN CALCULATION FUNCTION (Updated for Rounding) ---
     const calculate = () => {
-        let totalBill = 0;
+        let baseTotal = 0; // Total bill without tips (used for multiple mode clarity)
         let totalTipAmount = 0;
         const people = parseInt(numPeopleInput.value) || 1;
+        const shouldRoundUp = roundUpCheck.checked; // Check the rounding state // NEW
 
         // Ensure people is at least 1
         if (people < 1) {
@@ -55,15 +58,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (modeSelect.value === 'single') {
-            // SINGLE BILL MODE LOGIC
             const bill = parseFloat(billTotalInput.value) || 0;
             const tipPercent = parseFloat(tipPercentInput.value) || 0;
-
+            
+            baseTotal = bill;
             totalTipAmount = bill * (tipPercent / 100);
-            totalBill = bill + totalTipAmount;
 
         } else if (modeSelect.value === 'multiple') {
-            // MULTIPLE BILLS MODE LOGIC
             const billItems = document.querySelectorAll('.bill-item');
             
             billItems.forEach(item => {
@@ -75,34 +76,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const itemTip = billAmount * (tipPercent / 100);
 
+                baseTotal += billAmount;
                 totalTipAmount += itemTip;
-                totalBill += billAmount;
             });
-
-            totalBill += totalTipAmount; // Total bill includes the total calculated tips
-
         }
         
-        // Final shared calculations
-        const perPersonCost = totalBill / people;
+        let totalBill = baseTotal + totalTipAmount;
+        let perPersonCost = totalBill / people;
+        
+        // APPLY ROUNDING LOGIC // NEW
+        let roundedTotalBill = totalBill; 
+        let extraTipAdded = 0;
+
+        if (shouldRoundUp) {
+            const roundedPerPerson = Math.ceil(perPersonCost);
+            
+            // Calculate the new total bill based on the rounded per-person cost
+            roundedTotalBill = roundedPerPerson * people;
+            
+            // Calculate how much "extra" tip was added due to rounding
+            extraTipAdded = roundedTotalBill - totalBill;
+            
+            // The cost each person pays is now the rounded amount
+            perPersonCost = roundedPerPerson; 
+            
+            // The displayed tip amount must be updated to include the rounding extra
+            totalTipAmount += extraTipAdded;
+        }
 
         // Update the display
         totalTipDisplay.textContent = formatCurrency(totalTipAmount);
-        totalWithTipDisplay.textContent = formatCurrency(totalBill);
+        totalWithTipDisplay.textContent = formatCurrency(roundedTotalBill); // Use rounded total
         perPersonDisplay.textContent = formatCurrency(perPersonCost);
     };
 
 
-    // --- 4. DARK MODE LOGIC ---
+    // --- 4. DARK MODE LOGIC (No Change) ---
     const toggleDarkMode = () => {
         document.body.classList.toggle('dark-mode');
-        // Store user preference in local storage
         const isDarkMode = document.body.classList.contains('dark-mode');
         localStorage.setItem('dark-mode', isDarkMode ? 'enabled' : 'disabled');
         darkModeBtn.textContent = isDarkMode ? '☀️' : '🌓';
     };
 
-    // Load preference on start
     if (localStorage.getItem('dark-mode') === 'enabled') {
         document.body.classList.add('dark-mode');
         darkModeBtn.textContent = '☀️';
@@ -111,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     darkModeBtn.addEventListener('click', toggleDarkMode);
 
 
-    // --- 5. MODE SWITCHING AND MULTIPLE BILL LOGIC ---
+    // --- 5. MODE SWITCHING AND MULTIPLE BILL LOGIC (No Change) ---
     const switchMode = () => {
         if (modeSelect.value === 'multiple') {
             singleModeDiv.classList.add('hidden');
@@ -123,7 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
         calculate();
     };
     
-    // Function to create a new line item in Multiple Mode
     const createBillItem = () => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'bill-item';
@@ -134,38 +149,34 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="remove-btn" aria-label="Remove item">X</button>
         `;
         
-        // Add listeners for the new inputs
         itemDiv.querySelectorAll('input').forEach(input => {
             input.addEventListener('input', calculate);
         });
 
-        // Add listener for the remove button
         itemDiv.querySelector('.remove-btn').addEventListener('click', () => {
             itemDiv.remove();
             calculate();
         });
 
         billItemsContainer.appendChild(itemDiv);
-        calculate(); // Recalculate after adding a new item
+        calculate();
     };
     
-    // Initialize with one item in multiple mode
     if (billItemsContainer.children.length === 0) {
         createBillItem();
     }
 
 
-    // --- 6. INVOICE GENERATION LOGIC ---
+    // --- 6. INVOICE GENERATION LOGIC (No Change) ---
     const generateInvoice = () => {
-        // Retrieve final results
         const totalBill = totalWithTipDisplay.textContent;
         const perPersonPay = perPersonDisplay.textContent;
         const totalTip = totalTipDisplay.textContent;
         const currency = currencySelect.value;
         const people = numPeopleInput.value;
         const mode = modeSelect.value === 'single' ? 'Single Bill' : 'Multiple Bills';
+        const isRounded = roundUpCheck.checked ? ' (Rounded)' : ''; // ADDED ROUNDING FLAG
 
-        // Collect itemized list for Multiple Mode
         let itemizedList = '';
         if (modeSelect.value === 'multiple') {
             const items = Array.from(document.querySelectorAll('.bill-item')).map((item, index) => {
@@ -176,7 +187,6 @@ document.addEventListener('DOMContentLoaded', () => {
             itemizedList = `\n--- Items ---\n${items}`;
         }
         
-        // Simple text summary
         const invoiceText = `
         🧾 Tip & Split Summary (${mode}) 🧾
 
@@ -185,9 +195,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         Total Tip Paid: ${totalTip}
         --------------------------
-        GRAND TOTAL: ${totalBill}
+        GRAND TOTAL${isRounded}: ${totalBill}
         
-        EACH PERSON PAYS: ${perPersonPay}
+        EACH PERSON PAYS${isRounded}: ${perPersonPay}
         --------------------------
         
         ${itemizedList}
@@ -195,29 +205,26 @@ document.addEventListener('DOMContentLoaded', () => {
         #VibecodeTools
         `;
 
-        // The Web Share API is the modern, non-invasive way to share.
         if (navigator.share) {
             navigator.share({
                 title: 'Tip & Split Invoice',
                 text: invoiceText,
             }).catch(error => {
-                // Fallback for desktop or unsupported browsers
                 alert('Share failed or was cancelled. Copy this text instead:\n\n' + invoiceText);
             });
         } else {
-            // Fallback for unsupported browsers
             prompt('Copy the invoice text below:', invoiceText);
         }
     };
 
 
-    // --- 7. EVENT LISTENERS ---
-    // Universal listeners
+    // --- 7. EVENT LISTENERS (Added listener for Round Up Checkbox) ---
     currencySelect.addEventListener('change', calculate);
     numPeopleInput.addEventListener('input', calculate);
     modeSelect.addEventListener('change', switchMode);
     addBillItemBtn.addEventListener('click', createBillItem);
     generateInvoiceBtn.addEventListener('click', generateInvoice);
+    roundUpCheck.addEventListener('change', calculate); // NEW LISTENER
 
     // Single mode listeners
     billTotalInput.addEventListener('input', calculate);
