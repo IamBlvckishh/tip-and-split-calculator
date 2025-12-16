@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareInvoiceBtn = document.getElementById('share-invoice-btn');       
 
 
-    // --- 2. INPUT FORMATTING FUNCTION ---
+    // --- 2. INPUT FORMATTING FUNCTION (Handles commas and resets share button) ---
     const formatNumberInput = (e) => {
         let value = e.target.value;
 
@@ -45,9 +45,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // 4. Update the input field
         e.target.value = formattedWhole + decimal;
         
-        // 5. Trigger calculation and reset view
+        // 5. Trigger calculation (results are now visible in real-time)
         calculate(); 
-        resultsDisplayArea.classList.add('hidden');
+        
+        // 6. When input changes, hide the 'Share' button to force re-generation first
         shareInvoiceBtn.classList.add('hidden');
         generateBtn.classList.remove('hidden');
     };
@@ -79,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- 4. CORE CALCULATION FUNCTION (Calculates, does NOT show results) ---
+    // --- 4. CORE CALCULATION FUNCTION (Updates the visible display) ---
     const calculate = () => {
         let baseTotal = 0;
         let totalTipAmount = 0;
@@ -126,32 +127,28 @@ document.addEventListener('DOMContentLoaded', () => {
             totalTipAmount += extraTipAdded;
         }
 
-        // Update the display fields (they are inside the hidden container)
+        // Update the VISIBLE display fields
         totalTipDisplay.textContent = formatCurrency(totalTipAmount);
         totalWithTipDisplay.textContent = formatCurrency(roundedTotalBill);
         perPersonDisplay.textContent = formatCurrency(perPersonCost);
     };
 
 
-    // --- 5. GENERATE & VIEW INVOICE FUNCTION ---
+    // --- 5. GENERATE & VIEW INVOICE FUNCTION (Simplifes the view and prepares share) ---
     const generateAndViewInvoice = () => {
-        // 1. Perform final calculation
+        // 1. Perform final calculation (ensure numbers are finalized)
         calculate();
 
-        // 2. Show the results display area
-        resultsDisplayArea.classList.remove('hidden');
-
-        // 3. Hide the 'Generate' button
+        // 2. Hide the 'Generate' button
         generateBtn.classList.add('hidden');
 
-        // 4. Show the 'Share' button
+        // 3. Show the 'Share' button
         shareInvoiceBtn.classList.remove('hidden');
     }
 
 
-    // --- 6. SHARE INVOICE FUNCTION ---
+    // --- 6. SHARE INVOICE FUNCTION (Performs the share action) ---
     const shareInvoice = () => {
-        // Ensure the latest calculation is used
         calculate(); 
         
         const totalBill = totalWithTipDisplay.textContent;
@@ -224,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
         #VibecodeTools
         `;
 
-        // Trigger navigator.share only on second click
         if (navigator.share) {
             navigator.share({
                 title: `Invoice: ${mainDescription}`,
@@ -239,7 +235,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- 7. MODE SWITCHING, NAME LIST, AND OTHER LOGIC ---
+    // --- 7. HELPER FUNCTIONS ---
+    
     const updateNamesList = () => {
         const peopleCount = parseInt(numPeopleInput.value) || 1;
         const existingInputs = Array.from(namesContainer.querySelectorAll('input'));
@@ -272,6 +269,9 @@ document.addEventListener('DOMContentLoaded', () => {
             singleModeDiv.classList.remove('hidden');
         }
         calculate();
+        // Reset buttons when mode switches
+        shareInvoiceBtn.classList.add('hidden');
+        generateBtn.classList.remove('hidden');
     };
 
     const createBillItem = () => {
@@ -289,7 +289,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 input.addEventListener('input', () => {
                     calculate();
-                    resultsDisplayArea.classList.add('hidden');
                     shareInvoiceBtn.classList.add('hidden');
                     generateBtn.classList.remove('hidden');
                 }); 
@@ -298,23 +297,33 @@ document.addEventListener('DOMContentLoaded', () => {
         itemDiv.querySelector('.remove-btn').addEventListener('click', () => {
             itemDiv.remove();
             calculate();
+            shareInvoiceBtn.classList.add('hidden');
+            generateBtn.classList.remove('hidden');
         });
         billItemsContainer.appendChild(itemDiv);
         calculate();
     };
+    
+    const toggleDarkMode = () => {
+        document.body.classList.toggle('dark-mode');
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        localStorage.setItem('dark-mode', isDarkMode ? 'enabled' : 'disabled');
+        darkModeBtn.textContent = isDarkMode ? '☀️' : '🌓';
+    };
+
 
     // --- 8. EVENT LISTENERS ---
     currencySelect.addEventListener('change', calculate);
     modeSelect.addEventListener('change', switchMode);
     addBillItemBtn.addEventListener('click', createBillItem);
     roundUpCheck.addEventListener('change', calculate);
-    darkModeBtn.addEventListener('click', toggleDarkMode); // Re-added dark mode listener here for completeness
+    darkModeBtn.addEventListener('click', toggleDarkMode);
     
     // Primary Button Actions
     generateBtn.addEventListener('click', generateAndViewInvoice);
     shareInvoiceBtn.addEventListener('click', shareInvoice);
 
-    // Input Change Listeners (trigger formatNumberInput which handles calculate() and view reset)
+    // Input Change Listeners (trigger formatNumberInput which handles commas, calculate(), and view reset)
     billDescriptionInput.addEventListener('input', formatNumberInput); 
     billTotalInput.addEventListener('input', formatNumberInput); 
     tipPercentInput.addEventListener('input', formatNumberInput); 
@@ -322,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Listeners that trigger names list updates or calculation
     numPeopleInput.addEventListener('input', () => {
         updateNamesList();
-        // Trigger formatting function to handle the calculate() and view reset logic
+        // Use formatNumberInput logic to handle input reset and calculation
         formatNumberInput({target: numPeopleInput}); 
     });
 
@@ -344,9 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateNamesList();
             }
             
-            // Reset view when adjust button is used
             calculate();
-            resultsDisplayArea.classList.add('hidden');
             shareInvoiceBtn.classList.add('hidden');
             generateBtn.classList.remove('hidden');
         });
@@ -360,6 +367,10 @@ document.addEventListener('DOMContentLoaded', () => {
         darkModeBtn.textContent = '🌓';
     }
 
+    if (billItemsContainer.children.length === 0 && modeSelect.value === 'multiple') {
+        createBillItem();
+    }
+    
     updateNamesList();
     calculate();
 });
