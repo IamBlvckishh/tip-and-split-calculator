@@ -45,7 +45,7 @@
                 <input type="text" id="bill-description" placeholder="e.g., Dinner at 'The Local'">
                 
                 <label for="bill-total">Bill Total</label>
-                <input type="text" id="bill-total" value="0.00" placeholder="0.00">
+                <input type="text" id="bill-total" value="0.00" placeholder="0.00"> 
         
                 <label for="tip-percent">Tip %</label>
                 <div class="input-group">
@@ -57,6 +57,14 @@
 
             <div id="multiple-bills-mode" class="calc-mode hidden">
                 <h3>Line Items</h3>
+                
+                <div class="bill-item-headers">
+                    <span class="desc-header">Description</span>
+                    <span class="amount-header">Amount</span>
+                    <span class="tip-header">Tip %</span>
+                    <span class="remove-header"></span>
+                </div>
+
                 <div id="bill-items-container">
                     </div>
                 <button id="add-bill-item-btn" class="action-btn">+ Add Item</button>
