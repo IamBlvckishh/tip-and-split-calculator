@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. ELEMENT SELECTION (No Change) ---
+    // --- 1. ELEMENT SELECTION ---
     const currencySelect = document.getElementById('currency-select');
     const modeSelect = document.getElementById('mode-select');
     const darkModeBtn = document.getElementById('dark-mode-btn');
@@ -24,29 +24,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsDisplayArea = document.getElementById('results-display-area'); 
     const generateBtn = document.getElementById('generate-btn');               
     const shareInvoiceBtn = document.getElementById('share-invoice-btn');       
+    
+    // Canvas elements for in-app image generation
+    const canvas = document.getElementById('invoice-canvas');
+    const ctx = canvas.getContext('2d');
+    const statusMessage = document.getElementById('image-generation-status');
 
 
-    // --- 2. INPUT FORMATTING FUNCTION (No Change) ---
+    // --- 2. INPUT FORMATTING FUNCTION ---
     const formatNumberInput = (e) => {
         let value = e.target.value;
-
         let cleanValue = value.replace(/[^\d.]/g, ''); 
-        
         let parts = cleanValue.split('.');
         let whole = parts[0];
         let decimal = parts.length > 1 ? '.' + parts[1].substring(0, 2) : ''; 
-
         let formattedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
         e.target.value = formattedWhole + decimal;
         
         calculate(); 
-        
         shareInvoiceBtn.classList.add('hidden');
         generateBtn.classList.remove('hidden');
     };
 
-    // --- 3. CURRENCY AND FORMATTING HELPERS (No Change) ---
+    // --- 3. CURRENCY AND FORMATTING HELPERS ---
     const getLocaleForCurrency = (currencyCode) => {
         switch (currencyCode) {
             case 'EUR': return 'de-DE';
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- 4. CORE CALCULATION FUNCTION (No Change) ---
+    // --- 4. CORE CALCULATION FUNCTION ---
     const calculate = () => {
         let baseTotal = 0;
         let totalTipAmount = 0;
@@ -124,110 +124,221 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- 5. GENERATE & VIEW INVOICE FUNCTION (No Change) ---
+    // --- 5. GENERATE & VIEW INVOICE FUNCTION ---
     const generateAndViewInvoice = () => {
         calculate();
         generateBtn.classList.add('hidden');
         shareInvoiceBtn.classList.remove('hidden');
     }
 
+    // --- 6. CANVAS IMAGE GENERATION FUNCTION ---
+    const generateImageFromData = (invoiceData) => {
+        const padding = 30;
+        const lineHeight = 30;
+        const regularFont = '18px sans-serif';
+        const boldFont = 'bold 18px sans-serif';
 
-    // --- 6. SHARE INVOICE FUNCTION (FIXED: Handling user cancellation silently) ---
-    const shareInvoice = () => {
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        const bgColor = isDarkMode ? '#000000' : '#ffffff';
+        const textColor = isDarkMode ? '#f8f8f8' : '#000000';
+        const accentColor = isDarkMode ? '#222222' : '#eeeeee';
+
+        let contentLines = 8; 
+        contentLines += invoiceData.splitDetails.length;
+        if (invoiceData.itemizedList && invoiceData.itemizedList.length > 0) {
+            contentLines += 2; 
+            contentLines += invoiceData.itemizedList.length;
+        }
+        
+        canvas.width = 400; 
+        canvas.height = contentLines * lineHeight + 2 * padding;
+
+        let y = padding;
+
+        // Background
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Text Styles
+        ctx.fillStyle = textColor;
+        
+        // TITLE
+        ctx.font = 'bold 24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("INVOICE SUMMARY", canvas.width / 2, y);
+        y += lineHeight + 15;
+        
+        ctx.font = regularFont;
+        ctx.textAlign = 'left';
+
+        // DESCRIPTION & HEADER
+        ctx.fillText(`Description: ${invoiceData.title}`, padding, y);
+        y += lineHeight;
+        ctx.fillText(`People: ${invoiceData.people} | Currency: ${invoiceData.currency}`, padding, y);
+        y += lineHeight + 10;
+        
+        // TOTALS AREA (Accent Background)
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(0, y - 5, canvas.width, lineHeight * 3 + 5);
+        ctx.fillStyle = textColor;
+        
+        // Total Tip
+        ctx.font = regularFont;
+        ctx.fillText("Total Tip Amount:", padding, y);
+        ctx.textAlign = 'right';
+        ctx.fillText(invoiceData.totals.tipAmount, canvas.width - padding, y);
+        y += lineHeight;
+
+        // Total with Tip
+        ctx.fillText("Total with Tip:", padding, y);
+        ctx.textAlign = 'right';
+        ctx.fillText(invoiceData.totals.grandTotal, canvas.width - padding, y);
+        y += lineHeight + 5;
+        
+        // Final Split
+        ctx.font = boldFont;
+        ctx.fillText("Each Person Pays:", padding, y);
+        ctx.textAlign = 'right';
+        ctx.fillText(invoiceData.totals.perPerson, canvas.width - padding, y);
+        y += lineHeight + 15;
+        
+        // SPLIT DETAILS
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText("PAYMENT SPLIT:", padding, y);
+        y += lineHeight;
+
+        ctx.font = regularFont;
+        invoiceData.splitDetails.forEach(detail => {
+            ctx.fillText(detail.name, padding, y);
+            ctx.textAlign = 'right';
+            ctx.fillText(detail.amount, canvas.width - padding, y);
+            y += lineHeight;
+            ctx.textAlign = 'left'; 
+        });
+
+        // ITEMIZED LIST
+        if (invoiceData.itemizedList && invoiceData.itemizedList.length > 0) {
+            y += 10;
+            ctx.font = 'bold 16px sans-serif';
+            ctx.fillText("ITEM BREAKDOWN:", padding, y);
+            y += lineHeight;
+
+            ctx.font = '14px sans-serif';
+            invoiceData.itemizedList.forEach(item => {
+                const itemText = `${item.description} (${item.tipPercent}% tip)`;
+                ctx.fillText(itemText, padding, y);
+                ctx.textAlign = 'right';
+                ctx.fillText(item.amount, canvas.width - padding, y);
+                y += lineHeight - 5;
+                ctx.textAlign = 'left';
+            });
+        }
+        
+        // Convert canvas to image URL
+        return canvas.toDataURL('image/png');
+    };
+
+    // --- 7. SHARE INVOICE FUNCTION ---
+    const shareInvoice = async () => {
         calculate(); 
-        
-        const totalBill = totalWithTipDisplay.textContent;
-        const perPersonPay = perPersonDisplay.textContent;
-        const totalTip = totalTipDisplay.textContent;
+        statusMessage.classList.remove('hidden');
+        shareInvoiceBtn.disabled = true;
+
         const currency = currencySelect.value;
-        const people = numPeopleInput.value;
-        const mode = modeSelect.value === 'single' ? 'Single Bill' : 'Multiple Bills';
-        const isRounded = roundUpCheck.checked ? ' (Rounded)' : '';
+        const people = parseInt(numPeopleInput.value) || 1;
+        const mode = modeSelect.value;
+        const isRounded = roundUpCheck.checked;
 
-        const personNameInputs = Array.from(document.querySelectorAll('.person-name-input'));
+        // 1. Prepare Data Object
+        const invoiceData = {
+            mode: mode,
+            title: (mode === 'single' ? billDescriptionInput.value.trim() : 'Multiple Items Expense') || 'General Expense',
+            currency: currency,
+            people: people,
+            isRounded: isRounded,
+            totals: {
+                tipAmount: totalTipDisplay.textContent,
+                grandTotal: totalWithTipDisplay.textContent,
+                perPerson: perPersonDisplay.textContent
+            },
+            splitDetails: [],
+            itemizedList: [],
+        };
         
-        let mainDescription = '';
-        let itemizedList = '';
-        let splitDetails = '';
+        // Prepare Split Details
+        if (people > 1) {
+            const personNameInputs = Array.from(document.querySelectorAll('.person-name-input'));
+            invoiceData.splitDetails = personNameInputs.map((input, index) => ({
+                name: input.value.trim() || `Person ${index + 1}`,
+                amount: invoiceData.totals.perPerson
+            }));
+        } else {
+             invoiceData.splitDetails = [{ 
+                 name: document.querySelector('.person-name-input') ? document.querySelector('.person-name-input').value.trim() || 'Single Payer' : 'Single Payer',
+                 amount: invoiceData.totals.grandTotal
+             }];
+        }
 
-        if (modeSelect.value === 'single') {
-            mainDescription = billDescriptionInput.value.trim() || 'General Expense';
-        } else if (modeSelect.value === 'multiple') {
-            mainDescription = 'Multiple Items Expense'; 
-            
-            const items = Array.from(document.querySelectorAll('.bill-item')).map((item, index) => {
-                const description = item.querySelector('.desc-input').value.trim() || `Item ${index + 1}`;
+        // Prepare Item Details
+        if (mode === 'multiple') {
+            invoiceData.itemizedList = Array.from(document.querySelectorAll('.bill-item')).map((item, index) => {
                 const bill = getCleanMonetaryValue(item.querySelector('.bill-input'));
                 const tip = parseFloat(item.querySelector('.tip-input').value) || 0;
                 
-                return `[${description}] ${formatCurrency(bill)} + ${tip}% Tip`;
-            }).join('\n');
-            
-            itemizedList = `\n--- Item Details ---\n${items}`;
-        }
-        
-        if (people > 1) {
-            const costPerPerson = perPersonDisplay.textContent;
-            
-            const namedSplit = personNameInputs.map(input => {
-                const name = input.value.trim() || input.placeholder;
-                return `- ${name}: ${costPerPerson}`;
-            }).join('\n');
-            
-            splitDetails = `
-            --- SPLIT DETAILS ---
-            ${namedSplit}
-            `;
-        } else {
-             const name = personNameInputs[0] ? personNameInputs[0].value.trim() || 'Single Payer' : 'Single Payer';
-             splitDetails = `
-            --- PAYMENT ---
-            ${name} pays the full amount.
-            `;
-        }
-
-        const invoiceText = `
-        🧾 Tip & Split Summary (${mode}) 🧾
-        
-        DESCRIPTION: ${mainDescription}
-        
-        Currency Used: ${currency}
-        Number of People: ${people}
-        
-        Total Tip Paid: ${totalTip}
-        --------------------------
-        GRAND TOTAL${isRounded}: ${totalBill}
-        
-        ${splitDetails}
-
-        --------------------------
-        ${itemizedList}
-        
-        #VibecodeTools
-        `;
-
-        if (navigator.share) {
-            navigator.share({
-                title: `Invoice: ${mainDescription}`,
-                text: invoiceText,
-            }).catch(error => {
-                // Check if the error is due to user cancellation (AbortError)
-                if (error.name === 'AbortError' || error.message === 'Share cancelled') {
-                    // Do nothing, silence the cancellation.
-                    console.log("Sharing was cancelled by the user.");
-                } else {
-                    // If it's a real error (e.g., share not supported, failed), show the prompt.
-                    console.error("Share failed:", error);
-                    prompt('Copy the invoice text below:', invoiceText);
-                }
+                return {
+                    description: item.querySelector('.desc-input').value.trim() || `Item ${index + 1}`,
+                    amount: formatCurrency(bill),
+                    tipPercent: tip,
+                };
             });
-        } else {
-            prompt('Copy the invoice text below:', invoiceText);
+        }
+
+        // 2. Generate Image URL 
+        await new Promise(resolve => setTimeout(resolve, 50)); 
+        let imageURL;
+        try {
+            imageURL = generateImageFromData(invoiceData);
+        } catch (e) {
+            console.error("Canvas Image Generation Failed:", e);
+            alert("Could not generate image for sharing. Try copying the link manually.");
+            statusMessage.classList.add('hidden');
+            shareInvoiceBtn.disabled = false;
+            return;
+        }
+
+        // 3. Use Web Share API for the image file
+        try {
+            const response = await fetch(imageURL);
+            const blob = await response.blob();
+            const file = new File([blob], "invoice_summary.png", { type: 'image/png' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: `Invoice: ${invoiceData.title}`,
+                    text: `Tip & Split Summary: ${invoiceData.totals.grandTotal}`,
+                });
+            } else {
+                 prompt(`Image generated successfully. Copy this link or save the image below:`, imageURL);
+            }
+
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                console.log("Sharing was cancelled by the user.");
+            } else {
+                console.error("Share failed:", error);
+                // Fallback to image URL prompt
+                prompt('Share failed or unsupported. Copy this image link instead:', imageURL);
+            }
+        } finally {
+            statusMessage.classList.add('hidden');
+            shareInvoiceBtn.disabled = false;
         }
     };
 
 
-    // --- 7. HELPER FUNCTIONS (No Change) ---
+    // --- 8. HELPER FUNCTIONS AND EVENT LISTENERS ---
     
     const updateNamesList = () => {
         const peopleCount = parseInt(numPeopleInput.value) || 1;
@@ -302,31 +413,25 @@ document.addEventListener('DOMContentLoaded', () => {
         darkModeBtn.textContent = isDarkMode ? '☀️' : '🌓';
     };
 
-
-    // --- 8. EVENT LISTENERS (FIXED: Bill Description Input) ---
+    // Event Listeners
     currencySelect.addEventListener('change', calculate);
     modeSelect.addEventListener('change', switchMode);
     addBillItemBtn.addEventListener('click', createBillItem);
     roundUpCheck.addEventListener('change', calculate);
     darkModeBtn.addEventListener('click', toggleDarkMode);
     
-    // Primary Button Actions
     generateBtn.addEventListener('click', generateAndViewInvoice);
     shareInvoiceBtn.addEventListener('click', shareInvoice);
 
-    // Input Change Listeners 
-    // FIXED: billDescriptionInput now uses a simple listener to reset the share button
     billDescriptionInput.addEventListener('input', () => {
         calculate();
         shareInvoiceBtn.classList.add('hidden');
         generateBtn.classList.remove('hidden');
     }); 
     
-    // Monetary inputs use formatNumberInput
     billTotalInput.addEventListener('input', formatNumberInput); 
     tipPercentInput.addEventListener('input', formatNumberInput); 
 
-    // Listeners that trigger names list updates or calculation
     numPeopleInput.addEventListener('input', () => {
         updateNamesList();
         formatNumberInput({target: numPeopleInput}); 
