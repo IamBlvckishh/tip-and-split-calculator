@@ -42,12 +42,20 @@ label {
     font-weight: bold;
 }
 
-input[type="number"] {
+input[type="number"], 
+/* NEW: Select Styling */
+#currency-select { 
     width: 100%;
     padding: 10px;
     border: 1px solid #000;
     font-size: 1.2em;
-    text-align: left;
+    /* Removed text-align: left from input to apply to select only if needed */
+}
+
+#currency-select {
+    appearance: none; /* Removes default OS dropdown styling */
+    background: #fff;
+    cursor: pointer;
 }
 
 /* Grouped Input (Tip % and People) */
