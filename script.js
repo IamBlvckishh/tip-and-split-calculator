@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. ELEMENT SELECTION (Added billDescriptionInput) ---
+    // --- 1. ELEMENT SELECTION (Added namesContainer) ---
     const currencySelect = document.getElementById('currency-select');
     const modeSelect = document.getElementById('mode-select');
     const darkModeBtn = document.getElementById('dark-mode-btn');
@@ -10,10 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const billItemsContainer = document.getElementById('bill-items-container');
     const addBillItemBtn = document.getElementById('add-bill-item-btn');
 
-    const billDescriptionInput = document.getElementById('bill-description'); // NEW
+    const billDescriptionInput = document.getElementById('bill-description');
     const billTotalInput = document.getElementById('bill-total');
     const tipPercentInput = document.getElementById('tip-percent');
     const numPeopleInput = document.getElementById('num-people');
+    
+    const namesContainer = document.getElementById('names-container'); // NEW
 
     const totalTipDisplay = document.getElementById('total-tip-amount');
     const totalWithTipDisplay = document.getElementById('total-with-tip');
@@ -52,6 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (people < 1) {
             numPeopleInput.value = 1;
+            // IMPORTANT: If people changed, refresh names list
+            updateNamesList(); 
             return calculate();
         }
 
@@ -119,12 +123,41 @@ document.addEventListener('DOMContentLoaded', () => {
     darkModeBtn.addEventListener('click', toggleDarkMode);
 
 
-    // --- 5. MODE SWITCHING AND MULTIPLE BILL LOGIC (Updated createBillItem) ---
+    // --- 5. NAMES LIST MANAGEMENT (NEW FUNCTIONS) ---
+    const updateNamesList = () => {
+        const peopleCount = parseInt(numPeopleInput.value) || 1;
+        
+        // Save existing names before clearing container
+        const existingInputs = Array.from(namesContainer.querySelectorAll('input'));
+        const existingNames = existingInputs.map(input => input.value);
+        
+        // Clear old inputs
+        namesContainer.innerHTML = '';
+        
+        if (peopleCount > 1) {
+            const heading = document.createElement('label');
+            heading.textContent = 'Who is splitting the bill?';
+            namesContainer.appendChild(heading);
+
+            for (let i = 0; i < peopleCount; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'person-name-input';
+                input.placeholder = existingNames[i] || `Person ${i + 1}`;
+                input.value = existingNames[i] || ''; // Restore name or keep placeholder empty
+                
+                // Add input to the container
+                namesContainer.appendChild(input);
+            }
+        }
+    };
+
+
+    // --- 6. MODE SWITCHING AND MULTIPLE BILL LOGIC ---
     const switchMode = () => {
         if (modeSelect.value === 'multiple') {
             singleModeDiv.classList.add('hidden');
             multipleModeDiv.classList.remove('hidden');
-            // Ensure at least one item exists when switching to multiple mode
             if (billItemsContainer.children.length === 0) {
                  createBillItem();
             }
@@ -135,7 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
         calculate();
     };
     
-    // Updated function to include a description field for each item
     const createBillItem = () => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'bill-item';
@@ -147,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="remove-btn" aria-label="Remove item">X</button>
         `;
         
-        // Add listeners for the new inputs (including the description text input)
         itemDiv.querySelectorAll('input').forEach(input => {
             input.addEventListener('input', calculate);
         });
@@ -161,13 +192,12 @@ document.addEventListener('DOMContentLoaded', () => {
         calculate();
     };
     
-    // Initial setup for multiple mode
     if (billItemsContainer.children.length === 0) {
         createBillItem();
     }
 
 
-    // --- 6. INVOICE GENERATION LOGIC (Major Update for Descriptions) ---
+    // --- 7. INVOICE GENERATION LOGIC (Updated to include names) ---
     const generateInvoice = () => {
         const totalBill = totalWithTipDisplay.textContent;
         const perPersonPay = perPersonDisplay.textContent;
@@ -177,18 +207,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const mode = modeSelect.value === 'single' ? 'Single Bill' : 'Multiple Bills';
         const isRounded = roundUpCheck.checked ? ' (Rounded)' : '';
 
+        const personNameInputs = Array.from(document.querySelectorAll('.person-name-input'));
+        
         let mainDescription = '';
         let itemizedList = '';
+        let splitDetails = '';
 
+        // A. Capture Descriptions and Itemized List
         if (modeSelect.value === 'single') {
-            // Get single description and use it as the main description
             mainDescription = billDescriptionInput.value.trim() || 'General Expense';
-
         } else if (modeSelect.value === 'multiple') {
-            // Set a general description for the whole multiple bill
             mainDescription = 'Multiple Items Expense'; 
             
-            // Build the itemized list
             const items = Array.from(document.querySelectorAll('.bill-item')).map((item, index) => {
                 const description = item.querySelector('.desc-input').value.trim() || `Item ${index + 1}`;
                 const bill = parseFloat(item.querySelector('.bill-input').value) || 0;
@@ -200,6 +230,31 @@ document.addEventListener('DOMContentLoaded', () => {
             itemizedList = `\n--- Item Details ---\n${items}`;
         }
         
+        // B. Define Split Details with Names
+        if (people > 1) {
+            const costPerPerson = perPersonDisplay.textContent;
+            
+            // Generate list of names and their payment amount
+            const namedSplit = personNameInputs.map(input => {
+                const name = input.value.trim() || input.placeholder;
+                return `- ${name}: ${costPerPerson}`;
+            }).join('\n');
+            
+            splitDetails = `
+            --- SPLIT DETAILS ---
+            ${namedSplit}
+            `;
+        } else {
+             // If only 1 person, use their name if provided
+             const name = personNameInputs[0] ? personNameInputs[0].value.trim() || 'Single Payer' : 'Single Payer';
+             splitDetails = `
+            --- PAYMENT ---
+            ${name} pays the full amount.
+            `;
+        }
+
+
+        // C. Final Invoice Text
         const invoiceText = `
         🧾 Tip & Split Summary (${mode}) 🧾
         
@@ -212,9 +267,9 @@ document.addEventListener('DOMContentLoaded', () => {
         --------------------------
         GRAND TOTAL${isRounded}: ${totalBill}
         
-        EACH PERSON PAYS${isRounded}: ${perPersonPay}
+        ${splitDetails}
+
         --------------------------
-        
         ${itemizedList}
         
         #VibecodeTools
@@ -233,16 +288,21 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- 7. EVENT LISTENERS ---
+    // --- 8. EVENT LISTENERS ---
     currencySelect.addEventListener('change', calculate);
-    numPeopleInput.addEventListener('input', calculate);
     modeSelect.addEventListener('change', switchMode);
     addBillItemBtn.addEventListener('click', createBillItem);
     generateInvoiceBtn.addEventListener('click', generateInvoice);
     roundUpCheck.addEventListener('change', calculate);
+    billDescriptionInput.addEventListener('input', generateInvoice); 
 
-    // Single mode listeners (Added listener for description input)
-    billDescriptionInput.addEventListener('input', generateInvoice); // Only need to update invoice, not recalculate
+    // Listeners that must trigger names list updates or calculation
+    numPeopleInput.addEventListener('input', () => {
+        updateNamesList();
+        calculate();
+    });
+
+    // Single mode listeners
     billTotalInput.addEventListener('input', calculate);
     tipPercentInput.addEventListener('input', calculate);
     
@@ -259,10 +319,16 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (fieldId === 'num-people' && newValue < 1) newValue = 1;
 
             inputField.value = newValue;
+            
+            // Check if people count changed to update names list
+            if (fieldId === 'num-people') {
+                updateNamesList();
+            }
             calculate();
         });
     });
 
     // Initial setup
+    updateNamesList(); // Create initial name input (Person 1)
     calculate();
 });
