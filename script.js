@@ -20,34 +20,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalTipDisplay = document.getElementById('total-tip-amount');
     const totalWithTipDisplay = document.getElementById('total-with-tip');
     const perPersonDisplay = document.getElementById('per-person-pay');
-    const generateInvoiceBtn = document.getElementById('generate-invoice-btn');
+    
+    const resultsDisplayArea = document.getElementById('results-display-area'); 
+    const generateBtn = document.getElementById('generate-btn');               
+    const shareInvoiceBtn = document.getElementById('share-invoice-btn');       
 
 
-    // --- 2. INPUT FORMATTING FUNCTION (NEW) ---
+    // --- 2. INPUT FORMATTING FUNCTION ---
     const formatNumberInput = (e) => {
         let value = e.target.value;
 
         // 1. Remove all non-digit characters except the decimal point
-        // This regex ensures proper formatting regardless of locale (comma/dot)
         let cleanValue = value.replace(/[^\d.]/g, ''); 
         
         // 2. Separate whole number and decimal parts
         let parts = cleanValue.split('.');
         let whole = parts[0];
-        let decimal = parts.length > 1 ? '.' + parts[1].substring(0, 2) : ''; // Limit decimals to two
+        // Limit decimals to two
+        let decimal = parts.length > 1 ? '.' + parts[1].substring(0, 2) : ''; 
 
         // 3. Add commas for thousands to the whole number part
-        // Uses a regex to insert a comma every 3 digits from the right
         let formattedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
         // 4. Update the input field
         e.target.value = formattedWhole + decimal;
         
-        // 5. Trigger calculation
-        calculate();
+        // 5. Trigger calculation and reset view
+        calculate(); 
+        resultsDisplayArea.classList.add('hidden');
+        shareInvoiceBtn.classList.add('hidden');
+        generateBtn.classList.remove('hidden');
     };
 
-    // --- 3. CURRENCY AND FORMATTING HELPERS (No Change) ---
+    // --- 3. CURRENCY AND FORMATTING HELPERS ---
     const getLocaleForCurrency = (currencyCode) => {
         switch (currencyCode) {
             case 'EUR': return 'de-DE';
@@ -68,14 +73,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }).format(amount);
     };
 
-    // Helper to clean monetary input before calculation
     const getCleanMonetaryValue = (inputElement) => {
-        // Remove all commas (as they are visual separators)
+        // Remove commas before parsing float
         return parseFloat(inputElement.value.replace(/,/g, '')) || 0;
     };
 
 
-    // --- 4. MAIN CALCULATION FUNCTION (Updated to use getCleanMonetaryValue) ---
+    // --- 4. CORE CALCULATION FUNCTION (Calculates, does NOT show results) ---
     const calculate = () => {
         let baseTotal = 0;
         let totalTipAmount = 0;
@@ -89,26 +93,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (modeSelect.value === 'single') {
-            // Use new helper to read monetary input
             const bill = getCleanMonetaryValue(billTotalInput); 
             const tipPercent = parseFloat(tipPercentInput.value) || 0;
-            
             baseTotal = bill;
             totalTipAmount = bill * (tipPercent / 100);
 
         } else if (modeSelect.value === 'multiple') {
             const billItems = document.querySelectorAll('.bill-item');
-            
             billItems.forEach(item => {
                 const billInput = item.querySelector('.bill-input');
                 const tipInput = item.querySelector('.tip-input');
-                
-                // Use new helper to read monetary input
                 const billAmount = getCleanMonetaryValue(billInput); 
                 const tipPercent = parseFloat(tipInput.value) || 0;
-
                 const itemTip = billAmount * (tipPercent / 100);
-
                 baseTotal += billAmount;
                 totalTipAmount += itemTip;
             });
@@ -123,118 +120,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (shouldRoundUp) {
             const roundedPerPerson = Math.ceil(perPersonCost);
-            
             roundedTotalBill = roundedPerPerson * people;
             extraTipAdded = roundedTotalBill - totalBill;
-            
             perPersonCost = roundedPerPerson; 
             totalTipAmount += extraTipAdded;
         }
 
-        // Update the display
+        // Update the display fields (they are inside the hidden container)
         totalTipDisplay.textContent = formatCurrency(totalTipAmount);
         totalWithTipDisplay.textContent = formatCurrency(roundedTotalBill);
         perPersonDisplay.textContent = formatCurrency(perPersonCost);
     };
 
 
-    // --- 5. DARK MODE LOGIC (No Change) ---
-    const toggleDarkMode = () => {
-        document.body.classList.toggle('dark-mode');
-        const isDarkMode = document.body.classList.contains('dark-mode');
-        localStorage.setItem('dark-mode', isDarkMode ? 'enabled' : 'disabled');
-        darkModeBtn.textContent = isDarkMode ? '☀️' : '🌓';
-    };
-
-    if (localStorage.getItem('dark-mode') === 'enabled') {
-        document.body.classList.add('dark-mode');
-        darkModeBtn.textContent = '☀️';
-    }
-
-    darkModeBtn.addEventListener('click', toggleDarkMode);
-
-
-    // --- 6. NAMES LIST MANAGEMENT (No Change) ---
-    const updateNamesList = () => {
-        const peopleCount = parseInt(numPeopleInput.value) || 1;
-        
-        const existingInputs = Array.from(namesContainer.querySelectorAll('input'));
-        const existingNames = existingInputs.map(input => input.value);
-        
-        namesContainer.innerHTML = '';
-        
-        if (peopleCount > 1) {
-            const heading = document.createElement('label');
-            heading.textContent = 'Who is splitting the bill?';
-            namesContainer.appendChild(heading);
-
-            for (let i = 0; i < peopleCount; i++) {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'person-name-input';
-                input.placeholder = existingNames[i] || `Person ${i + 1}`;
-                input.value = existingNames[i] || '';
-                
-                namesContainer.appendChild(input);
-            }
-        }
-    };
-
-
-    // --- 7. MODE SWITCHING AND MULTIPLE BILL LOGIC (Updated createBillItem) ---
-    const switchMode = () => {
-        if (modeSelect.value === 'multiple') {
-            singleModeDiv.classList.add('hidden');
-            multipleModeDiv.classList.remove('hidden');
-            if (billItemsContainer.children.length === 0) {
-                 createBillItem();
-            }
-        } else {
-            multipleModeDiv.classList.add('hidden');
-            singleModeDiv.classList.remove('hidden');
-        }
+    // --- 5. GENERATE & VIEW INVOICE FUNCTION ---
+    const generateAndViewInvoice = () => {
+        // 1. Perform final calculation
         calculate();
-    };
-    
-    // Updated function to apply formatting listener to the new monetary input
-    const createBillItem = () => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'bill-item';
 
-        itemDiv.innerHTML = `
-            <input type="text" class="desc-input" placeholder="Item Name (e.g., Pizza)">
-            <input type="text" class="bill-input" value="0.00" placeholder="Amount">
-            <input type="number" class="tip-input" value="15" min="0" max="100" step="1" placeholder="Tip %">
-            <button class="remove-btn" aria-label="Remove item">X</button>
-        `;
-        
-        // Add listeners
-        itemDiv.querySelectorAll('input').forEach(input => {
-            if (input.classList.contains('bill-input')) {
-                // Attach the new formatting function to the monetary input
-                input.addEventListener('input', formatNumberInput); 
-            } else {
-                // Other inputs still trigger only calculate
-                input.addEventListener('input', calculate); 
-            }
-        });
+        // 2. Show the results display area
+        resultsDisplayArea.classList.remove('hidden');
 
-        itemDiv.querySelector('.remove-btn').addEventListener('click', () => {
-            itemDiv.remove();
-            calculate();
-        });
+        // 3. Hide the 'Generate' button
+        generateBtn.classList.add('hidden');
 
-        billItemsContainer.appendChild(itemDiv);
-        calculate();
-    };
-    
-    if (billItemsContainer.children.length === 0) {
-        createBillItem();
+        // 4. Show the 'Share' button
+        shareInvoiceBtn.classList.remove('hidden');
     }
 
 
-    // --- 8. INVOICE GENERATION LOGIC (No Change) ---
-    const generateInvoice = () => {
+    // --- 6. SHARE INVOICE FUNCTION ---
+    const shareInvoice = () => {
+        // Ensure the latest calculation is used
+        calculate(); 
+        
         const totalBill = totalWithTipDisplay.textContent;
         const perPersonPay = perPersonDisplay.textContent;
         const totalTip = totalTipDisplay.textContent;
@@ -256,7 +175,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const items = Array.from(document.querySelectorAll('.bill-item')).map((item, index) => {
                 const description = item.querySelector('.desc-input').value.trim() || `Item ${index + 1}`;
-                // NOTE: We read the clean monetary value for calculation, but the invoice uses the formatted output from the display for clarity.
                 const bill = getCleanMonetaryValue(item.querySelector('.bill-input'));
                 const tip = parseFloat(item.querySelector('.tip-input').value) || 0;
                 
@@ -266,7 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
             itemizedList = `\n--- Item Details ---\n${items}`;
         }
         
-        // Define Split Details with Names
         if (people > 1) {
             const costPerPerson = perPersonDisplay.textContent;
             
@@ -287,8 +204,6 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
 
-
-        // C. Final Invoice Text
         const invoiceText = `
         🧾 Tip & Split Summary (${mode}) 🧾
         
@@ -309,11 +224,13 @@ document.addEventListener('DOMContentLoaded', () => {
         #VibecodeTools
         `;
 
+        // Trigger navigator.share only on second click
         if (navigator.share) {
             navigator.share({
                 title: `Invoice: ${mainDescription}`,
                 text: invoiceText,
             }).catch(error => {
+                console.error("Share failed:", error);
                 alert('Share failed or was cancelled. Copy this text instead:\n\n' + invoiceText);
             });
         } else {
@@ -322,22 +239,91 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- 9. EVENT LISTENERS ---
+    // --- 7. MODE SWITCHING, NAME LIST, AND OTHER LOGIC ---
+    const updateNamesList = () => {
+        const peopleCount = parseInt(numPeopleInput.value) || 1;
+        const existingInputs = Array.from(namesContainer.querySelectorAll('input'));
+        const existingNames = existingInputs.map(input => input.value);
+        namesContainer.innerHTML = '';
+        if (peopleCount > 1) {
+            const heading = document.createElement('label');
+            heading.textContent = 'Who is splitting the bill?';
+            namesContainer.appendChild(heading);
+            for (let i = 0; i < peopleCount; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'person-name-input';
+                input.placeholder = existingNames[i] || `Person ${i + 1}`;
+                input.value = existingNames[i] || '';
+                namesContainer.appendChild(input);
+            }
+        }
+    };
+
+    const switchMode = () => {
+        if (modeSelect.value === 'multiple') {
+            singleModeDiv.classList.add('hidden');
+            multipleModeDiv.classList.remove('hidden');
+            if (billItemsContainer.children.length === 0) {
+                 createBillItem();
+            }
+        } else {
+            multipleModeDiv.classList.add('hidden');
+            singleModeDiv.classList.remove('hidden');
+        }
+        calculate();
+    };
+
+    const createBillItem = () => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'bill-item';
+        itemDiv.innerHTML = `
+            <input type="text" class="desc-input" placeholder="Item Name (e.g., Pizza)">
+            <input type="text" class="bill-input" value="0.00" placeholder="Amount">
+            <input type="number" class="tip-input" value="15" min="0" max="100" step="1" placeholder="Tip %">
+            <button class="remove-btn" aria-label="Remove item">X</button>
+        `;
+        itemDiv.querySelectorAll('input').forEach(input => {
+            if (input.classList.contains('bill-input')) {
+                input.addEventListener('input', formatNumberInput); 
+            } else {
+                input.addEventListener('input', () => {
+                    calculate();
+                    resultsDisplayArea.classList.add('hidden');
+                    shareInvoiceBtn.classList.add('hidden');
+                    generateBtn.classList.remove('hidden');
+                }); 
+            }
+        });
+        itemDiv.querySelector('.remove-btn').addEventListener('click', () => {
+            itemDiv.remove();
+            calculate();
+        });
+        billItemsContainer.appendChild(itemDiv);
+        calculate();
+    };
+
+    // --- 8. EVENT LISTENERS ---
     currencySelect.addEventListener('change', calculate);
     modeSelect.addEventListener('change', switchMode);
     addBillItemBtn.addEventListener('click', createBillItem);
-    generateInvoiceBtn.addEventListener('click', generateInvoice);
     roundUpCheck.addEventListener('change', calculate);
-    billDescriptionInput.addEventListener('input', generateInvoice); 
-
-    // Single mode listeners
-    billTotalInput.addEventListener('input', formatNumberInput); // ATTACH FORMATTING HERE
-    tipPercentInput.addEventListener('input', calculate);
+    darkModeBtn.addEventListener('click', toggleDarkMode); // Re-added dark mode listener here for completeness
     
+    // Primary Button Actions
+    generateBtn.addEventListener('click', generateAndViewInvoice);
+    shareInvoiceBtn.addEventListener('click', shareInvoice);
+
+    // Input Change Listeners (trigger formatNumberInput which handles calculate() and view reset)
+    billDescriptionInput.addEventListener('input', formatNumberInput); 
+    billTotalInput.addEventListener('input', formatNumberInput); 
+    tipPercentInput.addEventListener('input', formatNumberInput); 
+
     // Listeners that trigger names list updates or calculation
     numPeopleInput.addEventListener('input', () => {
         updateNamesList();
-        calculate();
+        // Trigger formatting function to handle the calculate() and view reset logic
+        formatNumberInput({target: numPeopleInput}); 
     });
 
     document.querySelectorAll('.adjust-btn').forEach(button => {
@@ -357,11 +343,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (fieldId === 'num-people') {
                 updateNamesList();
             }
+            
+            // Reset view when adjust button is used
             calculate();
+            resultsDisplayArea.classList.add('hidden');
+            shareInvoiceBtn.classList.add('hidden');
+            generateBtn.classList.remove('hidden');
         });
     });
 
     // Initial setup
+    if (localStorage.getItem('dark-mode') === 'enabled') {
+        document.body.classList.add('dark-mode');
+        darkModeBtn.textContent = '☀️';
+    } else {
+        darkModeBtn.textContent = '🌓';
+    }
+
     updateNamesList();
     calculate();
 });
