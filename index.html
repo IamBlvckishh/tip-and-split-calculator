@@ -43,6 +43,7 @@
         <hr>
 
         <div id="calculator-modes">
+            
             <div id="single-bill-mode" class="calc-mode">
                 <label for="bill-description">What was the bill for?</label>
                 <input type="text" id="bill-description" placeholder="e.g., Dinner at 'The Local'">
@@ -60,15 +61,19 @@
 
             <div id="multiple-bills-mode" class="calc-mode hidden">
                 <h3>Line Items</h3>
+                
                 <div class="bill-item-headers">
                     <span class="desc-header">Description</span>
                     <span class="amount-header">Amount</span>
                     <span class="tip-header">Tip %</span>
                     <span class="remove-header"></span>
                 </div>
-                <div id="bill-items-container"></div>
+
+                <div id="bill-items-container">
+                    </div>
                 <button id="add-bill-item-btn" class="action-btn">+ Add Item</button>
             </div>
+
         </div>
 
         <label for="num-people">Number of People</label>
@@ -86,11 +91,12 @@
             </div>
         </div>
 
-        <div id="names-container"></div>
+        <div id="names-container">
+            </div>
 
         <div class="round-up-option">
             <input type="checkbox" id="round-up-check">
-            <label for="round-up-check" class="checkbox-label">Round per-person up</label>
+            <label for="round-up-check" class="checkbox-label">Round per-person payment up to nearest whole unit</label>
         </div>
 
         <div class="results" id="results-display-area" data-person-costs="{}">
@@ -104,7 +110,7 @@
                 <span id="total-with-tip">0.00</span>
             </div>
             <div class="result-line final-result">
-                <span>Average per person:</span>
+                <span>Each Person Pays (Average):</span>
                 <span id="per-person-pay">0.00</span>
             </div>
         </div>
@@ -113,14 +119,12 @@
             <p>Generating Invoice Image...</p>
         </div>
 
-        <button id="generate-btn" class="action-btn">Generate Invoice</button>
+        <button id="generate-btn" class="action-btn">Generate & View Invoice</button>
+
         <button id="share-invoice-btn" class="action-btn hidden">Share Invoice</button>
         
         <canvas id="invoice-canvas" class="hidden"></canvas>
 
-        <footer class="app-footer">
-            <p>Built by <a href="https://github.com/IamBlvckishh" target="_blank">@IamBlvckishh</a> • <a href="LICENSE" target="_blank">MIT License</a></p>
-        </footer>
     </div>
 
     <script src="script.js"></script>
