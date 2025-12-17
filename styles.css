@@ -20,6 +20,7 @@
     --border-color: #000;
 }
 
+/* --- DARK MODE VARIABLES --- */
 body.dark-mode {
     --bg-light: #111;
     --bg-container: #000;
@@ -27,6 +28,7 @@ body.dark-mode {
     --border-color: #f8f8f8;
 }
 
+/* --- BODY AND CONTAINER --- */
 body {
     background-color: var(--bg-light);
     display: flex;
@@ -47,6 +49,7 @@ body {
     box-shadow: 5px 5px 0 var(--border-color);
 }
 
+/* --- HEADER STYLES --- */
 .header-container {
     display: flex;
     justify-content: space-between;
@@ -54,12 +57,13 @@ body {
     margin-bottom: 30px;
 }
 .header-container h1 {
-    margin-bottom: 0; 
+    margin-bottom: 0; /* Remove margin from original h1 */
     text-align: left;
     font-size: 1.5em;
     text-transform: uppercase;
 }
 
+/* --- RESET BUTTON STYLES --- */
 .header-action-btn {
     padding: 8px 15px;
     background-color: transparent;
@@ -76,6 +80,8 @@ body {
     color: var(--bg-container);
 }
 
+
+/* --- TOP CONTROLS (Mode/Currency/Toggle) --- */
 .top-controls {
     display: flex;
     justify-content: space-between;
@@ -91,6 +97,12 @@ body {
     margin-right: 0;
 }
 
+.dark-mode-toggle {
+    flex: 0 0 auto;
+    margin-left: 10px;
+}
+
+/* --- LABELS, INPUTS, SELECTS --- */
 label {
     display: block;
     margin-top: 15px;
@@ -111,6 +123,12 @@ input[type="text"],
     color: var(--text-color);
 }
 
+#currency-select, #mode-select {
+    appearance: none; 
+    cursor: pointer;
+}
+
+/* --- ADJUSTER BUTTONS (Tip % and People) --- */
 .input-group {
     display: flex;
     align-items: center;
@@ -130,8 +148,13 @@ input[type="text"],
     cursor: pointer;
     font-size: 1.5em;
     line-height: 1;
+    padding: 0;
+}
+.adjust-btn:hover {
+    opacity: 0.8;
 }
 
+/* --- DARK MODE TOGGLE BUTTON --- */
 #dark-mode-btn {
     width: 44px;
     height: 44px;
@@ -140,16 +163,25 @@ input[type="text"],
     border: 1px solid var(--border-color);
     cursor: pointer;
     font-size: 1.2em;
+    padding: 0;
 }
 
+/* --- SINGLE BILL TOTAL BIGGER --- */
 #single-bill-mode #bill-total {
-    font-size: 1.5em; 
-    padding: 15px 10px; 
+    font-size: 1.5em; /* Increase font size */
+    padding: 15px 10px; /* Increase vertical padding */
     text-align: right;
 }
 
-.calc-mode.hidden { display: none; }
+/* --- MODE SWITCHING & MULTIPLE BILLS --- */
+.calc-mode.hidden {
+    display: none;
+}
+.calc-mode h3 {
+    margin-bottom: 15px;
+}
 
+/* --- MULTIPLE BILL HEADERS --- */
 .bill-item-headers {
     display: flex;
     gap: 10px;
@@ -159,10 +191,17 @@ input[type="text"],
     text-transform: uppercase;
     margin-bottom: 5px;
 }
+.bill-item-headers span {
+    text-align: center;
+    overflow: hidden; 
+}
 .bill-item-headers .desc-header { flex: 2; text-align: left; }
 .bill-item-headers .amount-header { flex: 1.5; }
 .bill-item-headers .tip-header { flex: 0.8; } 
+.bill-item-headers .remove-header { width: 30px; }
 
+
+/* Individual Bill Line Item */
 .bill-item {
     display: flex;
     gap: 10px;
@@ -170,15 +209,42 @@ input[type="text"],
     padding: 10px;
     border: 1px dashed var(--border-color);
 }
-.bill-item .desc-input { flex: 2; }
-.bill-item .bill-input { flex: 1.5; }
-.bill-item .tip-input { flex: 0.8; text-align: center; }
+.bill-item .desc-input {
+    flex: 2; 
+}
+.bill-item .bill-input {
+    flex: 1.5; 
+}
+.bill-item .tip-input {
+    flex: 0.8; 
+    min-width: 50px; 
+    text-align: center;
+}
+.bill-item .remove-btn {
+    width: 30px;
+    flex-shrink: 0;
+    background: none;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    font-weight: bold;
+}
 
+/* --- NEW SPLIT MODE TOGGLE STYLES --- */
 .split-mode-toggle {
     margin-top: 20px;
     margin-bottom: 15px;
     padding-top: 15px;
     border-top: 1px solid var(--border-color);
+}
+.split-mode-toggle label {
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-top: 0;
+}
+.split-mode-toggle .input-group {
+    display: flex;
+    margin-top: 5px;
 }
 .split-toggle-btn {
     flex: 1;
@@ -187,33 +253,107 @@ input[type="text"],
     background-color: var(--bg-container);
     color: var(--text-color);
     cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s, color 0.2s;
     text-transform: uppercase;
+}
+.split-toggle-btn:first-child {
+    border-right: none;
 }
 .split-toggle-btn.active {
     background-color: var(--border-color);
     color: var(--bg-container);
 }
 
+/* --- ADJUSTED NAMES CONTAINER FOR PERCENTAGE MODE --- */
 .person-input-group {
     display: flex;
     gap: 10px;
     margin-bottom: 8px;
 }
-.percent-input-wrapper {
+.person-input-group input[type="text"] {
+    flex: 2; /* Name Input */
+}
+.person-input-group .percent-input-wrapper {
     flex: 1;
     display: flex;
     align-items: center;
 }
-.percent-input-wrapper input { text-align: right; padding-right: 25px; }
-.percent-input-wrapper span { position: relative; right: 20px; }
+.person-input-group .percent-input-wrapper input {
+    text-align: right;
+    padding-right: 25px; /* Space for the % sign */
+}
+.percent-input-wrapper span {
+    position: relative;
+    right: 20px;
+    color: var(--text-color);
+    pointer-events: none;
+}
 
+/* --- ROUND UP OPTION STYLES --- */
 .round-up-option {
     display: flex;
     align-items: center;
-    margin: 15px 0;
+    margin-top: 15px;
     padding: 10px 0;
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
+}
+
+.round-up-option input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-container);
+    appearance: none;
+}
+
+.round-up-option input[type="checkbox"]:checked {
+    background-color: var(--border-color);
+    position: relative;
+}
+
+.round-up-option input[type="checkbox"]:checked::before {
+    content: '✓';
+    color: var(--bg-container);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.round-up-option .checkbox-label {
+    margin: 0;
+    font-weight: normal;
+    font-size: 1em;
+    cursor: pointer;
+}
+
+/* --- RESULTS & ACTION BUTTONS --- */
+.results {
+    margin-top: 30px;
+}
+.hidden {
+    display: none !important; 
+}
+hr {
+    border: 1px solid var(--border-color);
+    margin: 15px 0;
+}
+.result-line {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+}
+.final-result {
+    font-weight: bold;
+    font-size: 1.3em;
+    margin-top: 15px;
 }
 
 .action-btn {
@@ -224,18 +364,21 @@ input[type="text"],
     color: var(--bg-container);
     border: 1px solid var(--border-color);
     cursor: pointer;
+    font-size: 1.1em;
     text-transform: uppercase;
 }
 
+/* --- New Status/Canvas Styles --- */
 .status-message {
     text-align: center;
     padding: 15px;
     margin-top: 20px;
     font-weight: bold;
-    background-color: var(--border-color);
     color: var(--bg-container);
+    background-color: var(--border-color);
 }
 
+/* --- APP FOOTER STYLES --- */
 .app-footer {
     margin-top: 30px;
     padding-top: 15px;
@@ -244,12 +387,15 @@ input[type="text"],
     font-size: 0.85em;
     opacity: 0.8;
 }
+
 .app-footer a {
     color: var(--text-color);
     font-weight: bold;
     text-decoration: none;
     border-bottom: 1px solid var(--border-color);
 }
-.app-footer .license-tag { font-weight: bold; }
 
-.hidden { display: none !important; }
+.app-footer .license-tag {
+    font-weight: bold;
+    text-transform: uppercase;
+}
