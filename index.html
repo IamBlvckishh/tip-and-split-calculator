@@ -43,7 +43,6 @@
         <hr>
 
         <div id="calculator-modes">
-            
             <div id="single-bill-mode" class="calc-mode">
                 <label for="bill-description">What was the bill for?</label>
                 <input type="text" id="bill-description" placeholder="e.g., Dinner at 'The Local'">
@@ -61,19 +60,15 @@
 
             <div id="multiple-bills-mode" class="calc-mode hidden">
                 <h3>Line Items</h3>
-                
                 <div class="bill-item-headers">
                     <span class="desc-header">Description</span>
                     <span class="amount-header">Amount</span>
                     <span class="tip-header">Tip %</span>
                     <span class="remove-header"></span>
                 </div>
-
-                <div id="bill-items-container">
-                    </div>
+                <div id="bill-items-container"></div>
                 <button id="add-bill-item-btn" class="action-btn">+ Add Item</button>
             </div>
-
         </div>
 
         <label for="num-people">Number of People</label>
@@ -87,12 +82,11 @@
             <label>Split Type:</label>
             <div class="input-group">
                 <button id="equal-split-btn" class="split-toggle-btn active" data-mode="equal">Equal Split</button>
-                <button id="percent-split-btn" class="split-toggle-btn" data-mode="percent">Percentage Split</button>
+                <button id="percent-split-btn" class="split-toggle-btn" data-mode="percent">% Split</button>
             </div>
         </div>
 
-        <div id="names-container">
-            </div>
+        <div id="names-container"></div>
 
         <div class="round-up-option">
             <input type="checkbox" id="round-up-check">
@@ -120,11 +114,14 @@
         </div>
 
         <button id="generate-btn" class="action-btn">Generate & View Invoice</button>
-
         <button id="share-invoice-btn" class="action-btn hidden">Share Invoice</button>
         
-        <canvas id="invoice-canvas" class="hidden"></canvas>
+        <footer class="app-footer">
+            <p>Developed by <a href="https://github.com/IamBlvckishh" target="_blank">IamBlvckishh</a></p>
+            <p>Licensed under <span class="license-tag">MIT</span></p>
+        </footer>
 
+        <canvas id="invoice-canvas" class="hidden"></canvas>
     </div>
 
     <script src="script.js"></script>
